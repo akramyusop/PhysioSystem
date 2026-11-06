@@ -1,0 +1,21 @@
+﻿# Rust target
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Node dependencies and build
+node_modules/
+dist/
+.vite/
+
+# SQLite databases & temp files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment & OS files
+.env
+.env.local
+.DS_Store
+Thumbs.db
