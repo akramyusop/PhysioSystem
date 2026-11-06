@@ -1,3 +1,29 @@
+export interface RegisterPayload {
+  full_name: string;
+  username: string;
+  password?: string;
+  role?: 'patient' | 'doctor';
+  injury_diagnosis: string;
+  date_of_birth?: string;
+  gender?: string;
+  baseline_rom_score?: number;
+  avatar_url?: string | null;
+}
+// Auth session user
+export interface AuthUser {
+  id: number;
+  username: string;
+  full_name: string;
+  role: 'doctor' | 'nurse' | 'patient';
+  patient_profile_id?: number | null;
+  injury_diagnosis?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface LoginPayload {
+  username: string;
+  password?: string;
+}
 // Shared API Models for all 6 Modules
 
 export interface ApiResponse<T> {

@@ -1,6 +1,8 @@
 import {
+  AuthUser,
+  LoginPayload,
+  RegisterPayload,
   ApiResponse,
-  User,
   TreatmentPlan,
   Exercise,
   GameSession,
@@ -42,7 +44,9 @@ async function postJson<T, P>(endpoint: string, payload: P): Promise<T | null> {
 
 export const api = {
   // Module 1
-  getUsers: () => fetchJson<User[]>('/auth/users'),
+  register: (payload: RegisterPayload) => postJson<AuthUser, RegisterPayload>("/auth/register", payload),
+  login: (payload: LoginPayload) => postJson<AuthUser, LoginPayload>('/auth/login', payload),
+  getUsers: () => fetchJson<AuthUser[]>('/auth/users'),
   // Module 2
   getTreatmentPlans: () => fetchJson<TreatmentPlan[]>('/prescription/plans'),
   // Module 3

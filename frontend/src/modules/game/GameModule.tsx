@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../../api/client';
-import { GameSession, HighScore } from '../../types';
+import { GameSession, HighScore, AuthUser } from '../../types';
 
 type GameMode = 'Upper-Limb Fruit Reach' | 'Sky Glider Trajectory' | 'Neural Hold Stabilizer';
 type ControlType = 'mouse' | 'webcam';
@@ -73,13 +73,19 @@ const GAME_CONFIGS: Record<
   },
 };
 
-export const GameModule: React.FC = () => {
+interface GameModuleProps {
+  currentUser?: AuthUser;
+}
+
+export const GameModule: React.FC<GameModuleProps> = ({ currentUser }) => {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [highScores, setHighScores] = useState<HighScore[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [selectedPatientId, setSelectedPatientId] = useState<number>(1);
+    const isPatient = currentUser?.role === 'patient';
+  const initialPatientId = isPatient && currentUser?.patient_profile_id ? currentUser.patient_profile_id : 1;
+  const [selectedPatientId, setSelectedPatientId] = useState<number>(initialPatientId);
   const [gameMode, setGameMode] = useState<GameMode>('Upper-Limb Fruit Reach');
   const [controlType, setControlType] = useState<ControlType>('mouse');
   const [webcamError, setWebcamError] = useState<string | null>(null);
@@ -590,25 +596,43 @@ export const GameModule: React.FC = () => {
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
           <div>
             <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#38bdf8', fontWeight: 700 }}>
-              PATIENT HOME REHAB PORTAL (LOGGED IN)
+              {isPatient ? 'YOUR PERSONAL HOME REHAB PORTAL' : 'DOCTOR CLINICAL REHAB TESTBENCH (SELECT PATIENT)'}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.3rem' }}>
-              <select
-                value={selectedPatientId}
-                onChange={e => {
-                  const pid = Number(e.target.value);
-                  setSelectedPatientId(pid);
-                  const pat = PATIENTS.find(p => p.id === pid);
-                  if (pat) { setGameMode(pat.defaultGame); resetGameState(pat.defaultGame); }
-                }}
-                style={{ padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid #475569', background: '#1e293b', color: 'white', fontWeight: 700, fontSize: '0.95rem' }}
-              >
-                {PATIENTS.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.diagnosis}
-                  </option>
-                ))}
-              </select>
+              {isPatient ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {currentUser?.avatar_url && (
+                    <img
+                      src={currentUser.avatar_url}
+                      alt={currentUser.full_name}
+                      style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #38bdf8' }}
+                    />
+                  )}
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f8fafc' }}>
+                    {currentUser?.full_name || selectedPatient.name}
+                  </span>
+                  <span className="tag" style={{ background: '#166534', color: '#bbf7d0', fontWeight: 700 }}>
+                    {currentUser?.injury_diagnosis || selectedPatient.diagnosis}
+                  </span>
+                </div>
+              ) : (
+                <select
+                  value={selectedPatientId}
+                  onChange={e => {
+                    const pid = Number(e.target.value);
+                    setSelectedPatientId(pid);
+                    const pat = PATIENTS.find(p => p.id === pid);
+                    if (pat) { setGameMode(pat.defaultGame); resetGameState(pat.defaultGame); }
+                  }}
+                  style={{ padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid #475569', background: '#1e293b', color: 'white', fontWeight: 700, fontSize: '0.95rem' }}
+                >
+                  {PATIENTS.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {p.diagnosis}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '0.35rem' }}>
               Prescribed by: <strong>{selectedPatient.prescribedBy}</strong> • Home Goal: <strong>{currentConfig.targetReps} Reps/Session</strong>
