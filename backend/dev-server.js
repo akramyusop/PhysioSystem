@@ -62,7 +62,7 @@ function parseJsonBody(req) {
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Content-Type', 'application/json');
 
@@ -75,9 +75,16 @@ const server = http.createServer(async (req, res) => {
   const url = req.url.split('?')[0];
 
   try {
+    // Health check
     if (url === '/api/health') {
       res.end(JSON.stringify({ status: 'ok', message: 'PhysioSystem Dev API running (Node SQLite bridge)' }));
-    } else if (url === '/api/auth/register' && req.method === 'POST') {
+      return;
+    }
+
+    // ==========================================
+    // MODULE 1: AUTH & USERS
+    // ==========================================
+    if (url === '/api/auth/register' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const username = String(body.username || '').trim().toLowerCase();
       const fullName = String(body.full_name || '').trim();
@@ -123,7 +130,10 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(400);
         res.end(JSON.stringify({ success: false, message: 'Username already exists or database error: ' + err.message }));
       }
-    } else if (url === '/api/auth/login' && req.method === 'POST') {
+      return;
+    }
+
+    if (url === '/api/auth/login' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const username = String(body.username || '').trim().toLowerCase();
       
@@ -152,7 +162,10 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(401);
         res.end(JSON.stringify({ success: false, message: 'Invalid username or credentials' }));
       }
-    } else if (url === '/api/auth/users' && req.method === 'GET') {
+      return;
+    }
+
+    if (url === '/api/auth/users' && req.method === 'GET') {
       const data = db.prepare(`
         SELECT u.id, u.username, u.full_name, u.role, u.avatar_url, p.id as patient_profile_id, p.injury_diagnosis
         FROM users u
@@ -160,19 +173,273 @@ const server = http.createServer(async (req, res) => {
         ORDER BY u.id ASC
       `).all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/prescription/plans' && req.method === 'GET') {
-      const data = db.prepare('SELECT id, patient_id, doctor_id, title, status, start_date, end_date FROM treatment_plans').all();
+      return;
+    }
+
+    // ==========================================
+    // MODULE 2: DOCTOR PRESCRIPTION PLANNER
+    // ==========================================
+    // GET /api/prescription/patients
+    if (url === '/api/prescription/patients' && req.method === 'GET') {
+      const patients = db.prepare(`
+        SELECT 
+          pp.id AS patient_profile_id,
+          pp.user_id,
+          u.full_name,
+          pp.gender,
+          pp.date_of_birth,
+          pp.injury_diagnosis,
+          pp.baseline_rom_score,
+          pp.notes,
+          u.avatar_url
+        FROM patient_profiles pp
+        JOIN users u ON pp.user_id = u.id
+        ORDER BY pp.id ASC
+      `).all();
+      res.end(JSON.stringify({ success: true, message: 'Patients fetched successfully', data: patients }));
+      return;
+    }
+
+    // POST /api/prescription/patients (Register new patient from doctor workspace)
+    if (url === '/api/prescription/patients' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const fullName = String(body.full_name || '').trim();
+      const username = 'patient_' + Date.now();
+      const diagnosis = String(body.injury_diagnosis || 'Physical Rehabilitation');
+      const dob = body.date_of_birth || '1990-01-01';
+      const gender = body.gender || 'Not Specified';
+      const rom = body.baseline_rom_score !== undefined ? Number(body.baseline_rom_score) : null;
+      const notes = body.notes || null;
+
+      const userInsert = db.prepare('INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)');
+      const userRes = userInsert.run(username, 'pass', fullName, 'patient');
+      const userId = userRes.lastInsertRowid;
+
+      const profileInsert = db.prepare('INSERT INTO patient_profiles (user_id, date_of_birth, gender, injury_diagnosis, baseline_rom_score, notes) VALUES (?, ?, ?, ?, ?, ?)');
+      const profileRes = profileInsert.run(userId, dob, gender, diagnosis, rom, notes);
+      const profileId = profileRes.lastInsertRowid;
+
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Patient registered successfully',
+        data: profileId
+      }));
+      return;
+    }
+
+    // PUT /api/prescription/patients/:id
+    const patientMatch = url.match(/^\/api\/prescription\/patients\/(\d+)$/);
+    if (patientMatch && req.method === 'PUT') {
+      const profileId = Number(patientMatch[1]);
+      const body = await parseJsonBody(req);
+      if (body.full_name) {
+        db.prepare('UPDATE users SET full_name = ? WHERE id = (SELECT user_id FROM patient_profiles WHERE id = ?)').run(body.full_name, profileId);
+      }
+      db.prepare(`
+        UPDATE patient_profiles 
+        SET injury_diagnosis = COALESCE(?, injury_diagnosis),
+            baseline_rom_score = COALESCE(?, baseline_rom_score),
+            notes = COALESCE(?, notes),
+            gender = COALESCE(?, gender),
+            date_of_birth = COALESCE(?, date_of_birth)
+        WHERE id = ?
+      `).run(body.injury_diagnosis || null, body.baseline_rom_score ?? null, body.notes || null, body.gender || null, body.date_of_birth || null, profileId);
+
+      res.end(JSON.stringify({ success: true, message: 'Patient profile updated' }));
+      return;
+    }
+
+    // PATCH /api/prescription/plans/:id/status
+    const statusMatch = url.match(/^\/api\/prescription\/plans\/(\d+)\/status$/);
+    if (statusMatch && req.method === 'PATCH') {
+      const planId = Number(statusMatch[1]);
+      const body = await parseJsonBody(req);
+      const status = body.status || 'active';
+      db.prepare('UPDATE treatment_plans SET status = ? WHERE id = ?').run(status, planId);
+      res.end(JSON.stringify({ success: true, message: 'Status updated', data: { id: planId, status } }));
+      return;
+    }
+
+    // GET /api/prescription/plans/:id (Detail with prescribed exercises)
+    const planDetailMatch = url.match(/^\/api\/prescription\/plans\/(\d+)$/);
+    if (planDetailMatch && req.method === 'GET') {
+      const planId = Number(planDetailMatch[1]);
+      const plan = db.prepare(`
+        SELECT 
+          tp.id,
+          tp.patient_id,
+          COALESCE(u_patient.full_name, 'Patient #' || tp.patient_id) AS patient_name,
+          COALESCE(pp.injury_diagnosis, 'N/A') AS patient_diagnosis,
+          tp.doctor_id,
+          COALESCE(u_doctor.full_name, 'Dr. Sarah Chen, MD') AS doctor_name,
+          tp.title,
+          tp.status,
+          tp.start_date,
+          tp.end_date,
+          (SELECT COUNT(*) FROM prescribed_exercises pe WHERE pe.plan_id = tp.id) AS exercise_count
+        FROM treatment_plans tp
+        LEFT JOIN patient_profiles pp ON tp.patient_id = pp.id
+        LEFT JOIN users u_patient ON pp.user_id = u_patient.id
+        LEFT JOIN users u_doctor ON tp.doctor_id = u_doctor.id
+        WHERE tp.id = ?
+      `).get(planId);
+
+      if (!plan) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, message: 'Treatment plan not found' }));
+        return;
+      }
+
+      const exercises = db.prepare(`
+        SELECT 
+          pe.id,
+          pe.plan_id,
+          pe.exercise_id,
+          e.name AS exercise_name,
+          e.target_body_part,
+          e.difficulty,
+          pe.sets,
+          pe.reps,
+          pe.hold_seconds,
+          pe.daily_frequency,
+          pe.safety_notes,
+          pe.order_index
+        FROM prescribed_exercises pe
+        JOIN exercises e ON pe.exercise_id = e.id
+        WHERE pe.plan_id = ?
+        ORDER BY pe.order_index ASC, pe.id ASC
+      `).all(planId);
+
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Plan details fetched',
+        data: { ...plan, exercises }
+      }));
+      return;
+    }
+
+    // PUT /api/prescription/plans/:id (Update plan & prescribed exercises)
+    if (planDetailMatch && req.method === 'PUT') {
+      const planId = Number(planDetailMatch[1]);
+      const body = await parseJsonBody(req);
+      db.prepare(`
+        UPDATE treatment_plans
+        SET title = COALESCE(?, title),
+            start_date = COALESCE(?, start_date),
+            end_date = COALESCE(?, end_date),
+            status = COALESCE(?, status)
+        WHERE id = ?
+      `).run(body.title || null, body.start_date || null, body.end_date || null, body.status || null, planId);
+
+      if (Array.isArray(body.exercises)) {
+        db.prepare('DELETE FROM prescribed_exercises WHERE plan_id = ?').run(planId);
+        const insertEx = db.prepare(`
+          INSERT INTO prescribed_exercises (plan_id, exercise_id, sets, reps, hold_seconds, daily_frequency, safety_notes, order_index)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (let idx = 0; idx < body.exercises.length; idx++) {
+          const ex = body.exercises[idx];
+          insertEx.run(planId, ex.exercise_id, ex.sets || 3, ex.reps || 10, ex.hold_seconds || 0, ex.daily_frequency || 1, ex.safety_notes || null, ex.order_index || (idx + 1));
+        }
+      }
+
+      res.end(JSON.stringify({ success: true, message: 'Treatment plan updated successfully' }));
+      return;
+    }
+
+    // DELETE /api/prescription/plans/:id
+    if (planDetailMatch && req.method === 'DELETE') {
+      const planId = Number(planDetailMatch[1]);
+      db.prepare('DELETE FROM prescribed_exercises WHERE plan_id = ?').run(planId);
+      db.prepare('DELETE FROM treatment_plans WHERE id = ?').run(planId);
+      res.end(JSON.stringify({ success: true, message: 'Treatment plan deleted', data: { deleted: true } }));
+      return;
+    }
+
+    // GET /api/prescription/plans
+    if (url === '/api/prescription/plans' && req.method === 'GET') {
+      const data = db.prepare(`
+        SELECT 
+          tp.id,
+          tp.patient_id,
+          COALESCE(u_patient.full_name, 'Patient #' || tp.patient_id) AS patient_name,
+          COALESCE(pp.injury_diagnosis, 'N/A') AS patient_diagnosis,
+          tp.doctor_id,
+          COALESCE(u_doctor.full_name, 'Dr. Sarah Chen, MD') AS doctor_name,
+          tp.title,
+          tp.status,
+          tp.start_date,
+          tp.end_date,
+          COUNT(pe.id) AS exercise_count
+        FROM treatment_plans tp
+        LEFT JOIN patient_profiles pp ON tp.patient_id = pp.id
+        LEFT JOIN users u_patient ON pp.user_id = u_patient.id
+        LEFT JOIN users u_doctor ON tp.doctor_id = u_doctor.id
+        LEFT JOIN prescribed_exercises pe ON tp.id = pe.plan_id
+        GROUP BY tp.id
+        ORDER BY tp.id DESC
+      `).all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/library/exercises' && req.method === 'GET') {
+      return;
+    }
+
+    // POST /api/prescription/plans (Issue new prescription)
+    if (url === '/api/prescription/plans' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const patientId = Number(body.patient_id) || 1;
+      const doctorId = Number(body.doctor_id) || 1;
+      const title = String(body.title || 'Rehabilitation Plan').trim();
+      const startDate = body.start_date || new Date().toISOString().split('T')[0];
+      const endDate = body.end_date || null;
+
+      const planStmt = db.prepare('INSERT INTO treatment_plans (patient_id, doctor_id, title, status, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)');
+      const planRes = planStmt.run(patientId, doctorId, title, 'active', startDate, endDate);
+      const planId = planRes.lastInsertRowid;
+
+      if (Array.isArray(body.exercises) && body.exercises.length > 0) {
+        const exStmt = db.prepare(`
+          INSERT INTO prescribed_exercises (plan_id, exercise_id, sets, reps, hold_seconds, daily_frequency, safety_notes, order_index)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (let idx = 0; idx < body.exercises.length; idx++) {
+          const ex = body.exercises[idx];
+          exStmt.run(planId, Number(ex.exercise_id), Number(ex.sets) || 3, Number(ex.reps) || 10, Number(ex.hold_seconds) || 0, Number(ex.daily_frequency) || 1, ex.safety_notes || null, ex.order_index || (idx + 1));
+        }
+      }
+
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Treatment plan issued successfully!',
+        data: { id: planId, patient_id: patientId, doctor_id: doctorId, title, status: 'active', start_date: startDate, end_date: endDate }
+      }));
+      return;
+    }
+
+    // ==========================================
+    // MODULE 3: EXERCISE LIBRARY
+    // ==========================================
+    if (url === '/api/library/exercises' && req.method === 'GET') {
       const data = db.prepare('SELECT id, name, description, target_body_part, difficulty, recommended_frequency FROM exercises').all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/game/sessions' && req.method === 'GET') {
+      return;
+    }
+
+    // ==========================================
+    // MODULE 4: GAMIFIED REHAB ENGINE
+    // ==========================================
+    if (url === '/api/game/sessions' && req.method === 'GET') {
       const data = db.prepare('SELECT id, patient_id, exercise_id, game_type, duration_seconds, score, accuracy_percentage, created_at FROM game_sessions ORDER BY id DESC').all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/game/high-scores' && req.method === 'GET') {
+      return;
+    }
+
+    if (url === '/api/game/high-scores' && req.method === 'GET') {
       const data = db.prepare('SELECT id, patient_id, game_type, highest_score, updated_at FROM high_scores ORDER BY highest_score DESC').all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/game/sessions' && req.method === 'POST') {
+      return;
+    }
+
+    if (url === '/api/game/sessions' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const patientId = Number(body.patient_id) || 1;
       const exerciseId = body.exercise_id ? Number(body.exercise_id) : null;
@@ -204,7 +471,13 @@ const server = http.createServer(async (req, res) => {
         message: 'Game session saved and high scores updated',
         data: created,
       }));
-    } else if (url === '/api/logger/meta' && req.method === 'GET') {
+      return;
+    }
+
+    // ==========================================
+    // MODULE 5: NURSE & ACTIVITY LOGGER
+    // ==========================================
+    if (url === '/api/logger/meta' && req.method === 'GET') {
       const nurses = db.prepare("SELECT id, full_name FROM users WHERE role = 'nurse'").all();
       const patients = db.prepare("SELECT p.id as profile_id, ('PT-' || substr('000' || p.id, -3)) as patient_id, u.full_name, p.injury_diagnosis, u.avatar_url FROM patient_profiles p JOIN users u ON p.user_id = u.id").all();
       res.end(JSON.stringify({
@@ -212,19 +485,31 @@ const server = http.createServer(async (req, res) => {
         message: 'Meta loaded',
         data: { nurses, patients }
       }));
-    } else if ((url === '/api/logger/activities' || url === '/api/logger/logs') && req.method === 'GET') {
+      return;
+    }
+
+    if ((url === '/api/logger/activities' || url === '/api/logger/logs') && req.method === 'GET') {
       const data = db.prepare("SELECT id, patient_id, nurse_name, activity_type, duration_minutes, assistance_level, notes, logged_at, voided, void_reason FROM activity_logs ORDER BY id DESC").all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/logger/activities' && req.method === 'POST') {
+      return;
+    }
+
+    if (url === '/api/logger/activities' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const stmt = db.prepare("INSERT INTO activity_logs (patient_id, nurse_name, activity_type, duration_minutes, assistance_level, notes) VALUES (?, ?, ?, ?, ?, ?)");
       const result = stmt.run(body.patient_id, body.nurse_name, body.activity_type, Number(body.duration_minutes) || 15, body.assistance_level, body.notes || null);
       const created = db.prepare("SELECT * FROM activity_logs WHERE id = ?").get(result.lastInsertRowid);
       res.end(JSON.stringify({ success: true, message: 'Activity logged', data: created }));
-    } else if (url === '/api/logger/vitals' && req.method === 'GET') {
+      return;
+    }
+
+    if (url === '/api/logger/vitals' && req.method === 'GET') {
       const data = db.prepare("SELECT id, patient_id, nurse_name, bp_systolic, bp_diastolic, heart_rate, spo2, temperature_c, pain_score, clinical_remarks, recorded_at, news2_score, voided, void_reason FROM vital_notes ORDER BY id DESC").all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else if (url === '/api/logger/vitals' && req.method === 'POST') {
+      return;
+    }
+
+    if (url === '/api/logger/vitals' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       const bpSys = Number(body.bp_systolic) || 120;
       const bpDia = Number(body.bp_diastolic) || 80;
@@ -238,7 +523,10 @@ const server = http.createServer(async (req, res) => {
       const result = stmt.run(body.patient_id, body.nurse_name, bpSys, bpDia, hr, spo2, temp, pain, body.clinical_remarks || null, news2);
       const created = db.prepare("SELECT * FROM vital_notes WHERE id = ?").get(result.lastInsertRowid);
       res.end(JSON.stringify({ success: true, message: 'Vitals recorded', data: created }));
-    } else if (url === '/api/logger/void' && req.method === 'POST') {
+      return;
+    }
+
+    if (url === '/api/logger/void' && req.method === 'POST') {
       const body = await parseJsonBody(req);
       if (body.record_type === 'activity') {
         db.prepare("UPDATE activity_logs SET voided = 1, void_reason = ? WHERE id = ?").run(body.reason, body.id);
@@ -246,13 +534,20 @@ const server = http.createServer(async (req, res) => {
         db.prepare("UPDATE vital_notes SET voided = 1, void_reason = ? WHERE id = ?").run(body.reason, body.id);
       }
       res.end(JSON.stringify({ success: true, message: 'Record voided successfully' }));
-    } else if (url === '/api/analytics/summary' && req.method === 'GET') {
+      return;
+    }
+
+    // ==========================================
+    // MODULE 6: CLINICAL RECOVERY ANALYTICS
+    // ==========================================
+    if (url === '/api/analytics/summary' && req.method === 'GET') {
       const data = db.prepare('SELECT patient_profile_id, patient_name, injury_diagnosis, total_sessions_logged, average_pain_score, max_rom_achieved, last_activity_date FROM view_patient_recovery_summary').all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
-    } else {
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, message: 'Route not found' }));
+      return;
     }
+
+    res.writeHead(404);
+    res.end(JSON.stringify({ success: false, message: 'Route not found' }));
   } catch (err) {
     res.writeHead(500);
     res.end(JSON.stringify({ success: false, message: err.message }));
