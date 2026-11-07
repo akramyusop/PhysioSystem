@@ -1,4 +1,4 @@
-﻿import {
+import {
   ApiResponse,
   User,
   TreatmentPlan,

@@ -1,4 +1,4 @@
-﻿// Shared API Models for all 6 Modules
+// Shared API Models for all 6 Modules
 
 export interface ApiResponse<T> {
   success: boolean;
