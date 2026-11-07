@@ -1,4 +1,4 @@
-﻿// Shared API Models for all 6 Modules
+// Shared API Models for all 6 Modules
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -77,18 +77,48 @@ export interface GameSession {
   accuracy_percentage?: number;
 }
 
-// Module 5: Activity Log
+// Module 5: Activity Log & Vitals
 export interface ActivityLog {
+  id?: number;
+  patient_id: string;
+  nurse_name: string;
+  activity_type: string;
+  duration_minutes: number;
+  assistance_level: string;
+  notes?: string;
+  logged_at?: string;
+  voided?: boolean;
+  void_reason?: string;
+}
+
+export interface VitalNote {
+  id?: number;
+  patient_id: string;
+  nurse_name: string;
+  bp_systolic: number;
+  bp_diastolic: number;
+  heart_rate: number;
+  spo2: number;
+  temperature_c: number;
+  pain_score: number;
+  clinical_remarks?: string;
+  recorded_at?: string;
+  news2_score?: number;
+  voided?: boolean;
+  void_reason?: string;
+}
+
+export interface NurseOption {
   id: number;
-  patient_id: number;
-  prescribed_exercise_id?: number;
-  logged_by_user_id: number;
-  completed_sets: number;
-  completed_reps: number;
-  achieved_rom_angle?: number;
-  pain_scale?: number;
-  rpe_scale?: number;
-  logged_at: string;
+  full_name: string;
+}
+
+export interface PatientOption {
+  profile_id: number;
+  patient_id: string;
+  full_name: string;
+  injury_diagnosis: string;
+  avatar_url?: string;
 }
 
 // Module 6: Analytics Summary

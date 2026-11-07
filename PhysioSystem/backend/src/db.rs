@@ -1,4 +1,4 @@
-﻿use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 use std::fs;
 
 pub type DbPool = Pool<Sqlite>;
@@ -18,6 +18,16 @@ pub async fn init_db(database_url: &str) -> Result<DbPool, Box<dyn std::error::E
     if let Ok(seed_sql) = fs::read_to_string("migrations/002_seed.sql") {
         sqlx::query(&seed_sql).execute(&pool).await?;
         tracing::info!("Applied migrations/002_seed.sql successfully.");
+    }
+
+    if let Ok(migration3_sql) = fs::read_to_string("migrations/003_update_logger_vitals.sql") {
+        sqlx::query(&migration3_sql).execute(&pool).await?;
+        tracing::info!("Applied migrations/003_update_logger_vitals.sql successfully.");
+    }
+
+    if let Ok(migration4_sql) = fs::read_to_string("migrations/004_clinical_audit_fields.sql") {
+        let _ = sqlx::query(&migration4_sql).execute(&pool).await;
+        tracing::info!("Applied migrations/004_clinical_audit_fields.sql successfully.");
     }
 
     Ok(pool)
