@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { AuthModule } from './modules/auth/AuthModule';
 import { PrescriptionModule } from './modules/prescription/PrescriptionModule';
 import { LibraryModule } from './modules/library/LibraryModule';

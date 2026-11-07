@@ -1,4 +1,4 @@
-﻿// Shared API Models for all 6 Modules
+// Shared API Models for all 6 Modules
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -33,6 +33,11 @@ export interface TreatmentPlan {
   status: 'active' | 'completed' | 'paused';
   start_date: string;
   end_date?: string;
+  // Enriched fields from database join
+  patient_name?: string;
+  patient_diagnosis?: string;
+  doctor_name?: string;
+  exercise_count?: number;
 }
 
 export interface PrescribedExercise {
@@ -45,6 +50,70 @@ export interface PrescribedExercise {
   daily_frequency?: number;
   safety_notes?: string;
   order_index?: number;
+  // Enriched fields from exercise join
+  exercise_name?: string;
+  target_body_part?: string;
+  difficulty?: string;
+}
+
+export interface TreatmentPlanDetail extends TreatmentPlan {
+  exercises: PrescribedExercise[];
+}
+
+export interface CreatePrescribedExerciseInput {
+  exercise_id: number;
+  sets: number;
+  reps: number;
+  hold_seconds: number;
+  daily_frequency: number;
+  safety_notes?: string;
+  order_index?: number;
+}
+
+export interface CreatePlanPayload {
+  patient_id: number;
+  doctor_id: number;
+  title: string;
+  start_date: string;
+  end_date?: string;
+  exercises: CreatePrescribedExerciseInput[];
+}
+
+export interface UpdatePlanPayload {
+  title: string;
+  start_date: string;
+  end_date?: string;
+  status?: 'active' | 'completed' | 'paused';
+  exercises: CreatePrescribedExerciseInput[];
+}
+
+export interface PatientOption {
+  patient_profile_id: number;
+  user_id: number;
+  full_name: string;
+  gender?: string;
+  date_of_birth?: string;
+  injury_diagnosis: string;
+  baseline_rom_score?: number;
+  notes?: string;
+}
+
+export interface CreatePatientPayload {
+  full_name: string;
+  gender?: string;
+  date_of_birth?: string;
+  injury_diagnosis: string;
+  baseline_rom_score?: number;
+  notes?: string;
+}
+
+export interface UpdatePatientPayload {
+  full_name?: string;
+  gender?: string;
+  date_of_birth?: string;
+  injury_diagnosis: string;
+  baseline_rom_score?: number;
+  notes?: string;
 }
 
 // Module 3: Exercise Library
