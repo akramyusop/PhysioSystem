@@ -6,14 +6,40 @@ const path = require('node:path');
 const dbPath = path.resolve(__dirname, '../physio.db');
 const db = new DatabaseSync(dbPath);
 
-// Ensure migrations and seed data are applied
-const initSqlPath = path.resolve(__dirname, 'migrations/001_init.sql');
-const seedSqlPath = path.resolve(__dirname, 'migrations/002_seed.sql');
-if (fs.existsSync(initSqlPath)) {
-  try { db.exec(fs.readFileSync(initSqlPath, 'utf8')); } catch (_) {}
+// Ensure migrations are loaded
+const migrations = [
+  '001_init.sql',
+  '002_seed.sql',
+  '003_update_logger_vitals.sql',
+  '004_clinical_audit_fields.sql'
+];
+
+for (const m of migrations) {
+  const p = path.resolve(__dirname, 'migrations', m);
+  if (fs.existsSync(p)) {
+    try { db.exec(fs.readFileSync(p, 'utf8')); } catch (_) {}
+  }
 }
-if (fs.existsSync(seedSqlPath)) {
-  try { db.exec(fs.readFileSync(seedSqlPath, 'utf8')); } catch (_) {}
+
+function calculateNews2(bpSys, hr, spo2, temp) {
+  let score = 0;
+  if (bpSys <= 90 || bpSys >= 220) score += 3;
+  else if (bpSys <= 100) score += 2;
+  else if (bpSys <= 110) score += 1;
+
+  if (hr <= 40 || hr >= 131) score += 3;
+  else if (hr >= 111) score += 2;
+  else if (hr <= 50 || hr >= 91) score += 1;
+
+  if (spo2 <= 91) score += 3;
+  else if (spo2 <= 93) score += 2;
+  else if (spo2 <= 95) score += 1;
+
+  if (temp <= 35.0) score += 3;
+  else if (temp >= 39.1) score += 2;
+  else if (temp <= 36.0 || temp >= 38.1) score += 1;
+
+  return score;
 }
 
 function parseJsonBody(req) {
@@ -127,10 +153,12 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, message: 'Invalid username or credentials' }));
       }
     } else if (url === '/api/auth/users' && req.method === 'GET') {
-      const data = db.prepare('SELECT u.id, u.username, u.full_name, u.role, u.avatar_url, p.id as patient_profile_id, p.injury_diagnosis
-         FROM users u
-         LEFT JOIN patient_profiles p ON u.id = p.user_id
-         ORDER BY u.id ASC').all();
+      const data = db.prepare(`
+        SELECT u.id, u.username, u.full_name, u.role, u.avatar_url, p.id as patient_profile_id, p.injury_diagnosis
+        FROM users u
+        LEFT JOIN patient_profiles p ON u.id = p.user_id
+        ORDER BY u.id ASC
+      `).all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
     } else if (url === '/api/prescription/plans' && req.method === 'GET') {
       const data = db.prepare('SELECT id, patient_id, doctor_id, title, status, start_date, end_date FROM treatment_plans').all();
@@ -176,9 +204,48 @@ const server = http.createServer(async (req, res) => {
         message: 'Game session saved and high scores updated',
         data: created,
       }));
-    } else if (url === '/api/logger/logs' && req.method === 'GET') {
-      const data = db.prepare('SELECT id, patient_id, prescribed_exercise_id, logged_by_user_id, completed_sets, completed_reps, achieved_rom_angle, pain_scale, rpe_scale, logged_at FROM activity_logs').all();
+    } else if (url === '/api/logger/meta' && req.method === 'GET') {
+      const nurses = db.prepare("SELECT id, full_name FROM users WHERE role = 'nurse'").all();
+      const patients = db.prepare("SELECT p.id as profile_id, ('PT-' || substr('000' || p.id, -3)) as patient_id, u.full_name, p.injury_diagnosis, u.avatar_url FROM patient_profiles p JOIN users u ON p.user_id = u.id").all();
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Meta loaded',
+        data: { nurses, patients }
+      }));
+    } else if ((url === '/api/logger/activities' || url === '/api/logger/logs') && req.method === 'GET') {
+      const data = db.prepare("SELECT id, patient_id, nurse_name, activity_type, duration_minutes, assistance_level, notes, logged_at, voided, void_reason FROM activity_logs ORDER BY id DESC").all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
+    } else if (url === '/api/logger/activities' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const stmt = db.prepare("INSERT INTO activity_logs (patient_id, nurse_name, activity_type, duration_minutes, assistance_level, notes) VALUES (?, ?, ?, ?, ?, ?)");
+      const result = stmt.run(body.patient_id, body.nurse_name, body.activity_type, Number(body.duration_minutes) || 15, body.assistance_level, body.notes || null);
+      const created = db.prepare("SELECT * FROM activity_logs WHERE id = ?").get(result.lastInsertRowid);
+      res.end(JSON.stringify({ success: true, message: 'Activity logged', data: created }));
+    } else if (url === '/api/logger/vitals' && req.method === 'GET') {
+      const data = db.prepare("SELECT id, patient_id, nurse_name, bp_systolic, bp_diastolic, heart_rate, spo2, temperature_c, pain_score, clinical_remarks, recorded_at, news2_score, voided, void_reason FROM vital_notes ORDER BY id DESC").all();
+      res.end(JSON.stringify({ success: true, message: 'OK', data }));
+    } else if (url === '/api/logger/vitals' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const bpSys = Number(body.bp_systolic) || 120;
+      const bpDia = Number(body.bp_diastolic) || 80;
+      const hr = Number(body.heart_rate) || 72;
+      const spo2 = Number(body.spo2) || 98;
+      const temp = Number(body.temperature_c) || 36.8;
+      const pain = Number(body.pain_score) || 0;
+      const news2 = calculateNews2(bpSys, hr, spo2, temp);
+
+      const stmt = db.prepare("INSERT INTO vital_notes (patient_id, nurse_name, bp_systolic, bp_diastolic, heart_rate, spo2, temperature_c, pain_score, clinical_remarks, news2_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      const result = stmt.run(body.patient_id, body.nurse_name, bpSys, bpDia, hr, spo2, temp, pain, body.clinical_remarks || null, news2);
+      const created = db.prepare("SELECT * FROM vital_notes WHERE id = ?").get(result.lastInsertRowid);
+      res.end(JSON.stringify({ success: true, message: 'Vitals recorded', data: created }));
+    } else if (url === '/api/logger/void' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      if (body.record_type === 'activity') {
+        db.prepare("UPDATE activity_logs SET voided = 1, void_reason = ? WHERE id = ?").run(body.reason, body.id);
+      } else {
+        db.prepare("UPDATE vital_notes SET voided = 1, void_reason = ? WHERE id = ?").run(body.reason, body.id);
+      }
+      res.end(JSON.stringify({ success: true, message: 'Record voided successfully' }));
     } else if (url === '/api/analytics/summary' && req.method === 'GET') {
       const data = db.prepare('SELECT patient_profile_id, patient_name, injury_diagnosis, total_sessions_logged, average_pain_score, max_rom_achieved, last_activity_date FROM view_patient_recovery_summary').all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));

@@ -15,6 +15,7 @@ pub struct User {
     pub username: String,
     pub full_name: String,
     pub role: String,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
@@ -106,19 +107,64 @@ pub struct HighScore {
     pub updated_at: Option<String>,
 }
 
-// Module 5: Activity Log
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+// Module 5: Activity Log & Vitals
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ActivityLog {
+    pub id: Option<i64>,
+    pub patient_id: String,
+    pub nurse_name: String,
+    pub activity_type: String,
+    pub duration_minutes: i64,
+    pub assistance_level: String,
+    pub notes: Option<String>,
+    pub logged_at: Option<String>,
+    pub voided: Option<bool>,
+    pub void_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct VitalNote {
+    pub id: Option<i64>,
+    pub patient_id: String,
+    pub nurse_name: String,
+    pub bp_systolic: i64,
+    pub bp_diastolic: i64,
+    pub heart_rate: i64,
+    pub spo2: i64,
+    pub temperature_c: f64,
+    pub pain_score: i64,
+    pub clinical_remarks: Option<String>,
+    pub recorded_at: Option<String>,
+    pub news2_score: Option<i64>,
+    pub voided: Option<bool>,
+    pub void_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VoidRequest {
     pub id: i64,
-    pub patient_id: i64,
-    pub prescribed_exercise_id: Option<i64>,
-    pub logged_by_user_id: i64,
-    pub completed_sets: i64,
-    pub completed_reps: i64,
-    pub achieved_rom_angle: Option<f64>,
-    pub pain_scale: Option<i64>,
-    pub rpe_scale: Option<i64>,
-    pub logged_at: String,
+    pub record_type: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct NurseOption {
+    pub id: i64,
+    pub full_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct PatientOption {
+    pub profile_id: i64,
+    pub patient_id: String,
+    pub full_name: String,
+    pub injury_diagnosis: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggerMetaResponse {
+    pub nurses: Vec<NurseOption>,
+    pub patients: Vec<PatientOption>,
 }
 
 // Module 6: Analytics Summary View
