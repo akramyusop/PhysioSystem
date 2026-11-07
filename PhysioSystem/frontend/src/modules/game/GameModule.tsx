@@ -4,6 +4,7 @@ import { GameSession } from '../../types';
 
 export const GameModule: React.FC = () => {
   const [sessions, setSessions] = useState<GameSession[]>([]);
+  void sessions;
   const [currentScore, setCurrentScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);

@@ -38,6 +38,7 @@ export interface TreatmentPlan {
   patient_diagnosis?: string;
   doctor_name?: string;
   exercise_count?: number;
+  exercises?: PrescribedExercise[];
 }
 
 export interface PrescribedExercise {

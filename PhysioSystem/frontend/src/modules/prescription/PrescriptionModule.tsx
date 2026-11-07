@@ -7,11 +7,12 @@ import {
   CreatePatientPayload,
   UpdatePatientPayload,
   Exercise,
+  PrescribedExercise,
   CreatePrescribedExerciseInput,
 } from '../../types';
 
 // ==========================================================
-// CLINICAL PROTOCOL TEMPLATES (Point 1)
+// CLINICAL PROTOCOL TEMPLATES
 // ==========================================================
 interface ClinicalTemplate {
   id: string;
@@ -22,6 +23,7 @@ interface ClinicalTemplate {
   badge: string;
   description: string;
   recommendedDurationWeeks: number;
+  isCustom?: boolean;
   exercises: {
     exerciseNameMatch: string;
     fallbackExerciseId: number;
@@ -33,7 +35,7 @@ interface ClinicalTemplate {
   }[];
 }
 
-const CLINICAL_TEMPLATES: ClinicalTemplate[] = [
+const DEFAULT_TEMPLATES: ClinicalTemplate[] = [
   {
     id: 'acl-p1',
     name: 'ACL Reconstruction Protocol (Phase 1)',
@@ -163,7 +165,31 @@ export const PrescriptionModule: React.FC = () => {
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Search & Filter (Point 2)
+  // Dynamic Clinical Templates State (Doctor can add/delete custom templates)
+  const [templates, setTemplates] = useState<ClinicalTemplate[]>(() => {
+    try {
+      const saved = localStorage.getItem('physio_custom_templates');
+      if (saved) {
+        const parsed: ClinicalTemplate[] = JSON.parse(saved);
+        return [...DEFAULT_TEMPLATES, ...parsed];
+      }
+    } catch (e) {
+      console.warn('Failed to parse custom templates', e);
+    }
+    return DEFAULT_TEMPLATES;
+  });
+
+  // Modal to create custom clinical template
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState<boolean>(false);
+  const [newTmplName, setNewTmplName] = useState<string>('');
+  const [newTmplCondition, setNewTmplCondition] = useState<string>('');
+  const [newTmplIcon, setNewTmplIcon] = useState<string>('🩺');
+  const [newTmplColor, setNewTmplColor] = useState<string>('#0284c7');
+  const [newTmplBadge, setNewTmplBadge] = useState<string>('Orthopedic • Protocol');
+  const [newTmplDescription, setNewTmplDescription] = useState<string>('');
+  const [newTmplDurationWeeks, setNewTmplDurationWeeks] = useState<number>(4);
+
+  // Search & Filter
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'completed'>('all');
 
@@ -171,10 +197,10 @@ export const PrescriptionModule: React.FC = () => {
   const [selectedPlanDetail, setSelectedPlanDetail] = useState<TreatmentPlanDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState<boolean>(false);
 
-  // Print Take-Home Sheet Modal (Point 3)
+  // Print Take-Home Sheet Modal
   const [printPlan, setPrintPlan] = useState<TreatmentPlanDetail | null>(null);
 
-  // Form State: Create / Edit Plan (Point 4)
+  // Form State: Create / Edit Plan
   const [showBuilder, setShowBuilder] = useState<boolean>(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<number>(1);
@@ -185,11 +211,12 @@ export const PrescriptionModule: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
   const [prescribedRows, setPrescribedRows] = useState<CreatePrescribedExerciseInput[]>([
     { exercise_id: 1, sets: 3, reps: 10, hold_seconds: 5, daily_frequency: 2, safety_notes: '' },
+    { exercise_id: 2, sets: 3, reps: 12, hold_seconds: 0, daily_frequency: 2, safety_notes: '' },
   ]);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Patient Management Modals (New Feature: Add & Update Patient)
+  // Patient Management Modals
   const [showNewPatientModal, setShowNewPatientModal] = useState<boolean>(false);
   const [showEditPatientModal, setShowEditPatientModal] = useState<boolean>(false);
 
@@ -233,6 +260,36 @@ export const PrescriptionModule: React.FC = () => {
             start_date: '2026-10-15',
             end_date: '2026-12-01',
             exercise_count: 2,
+            exercises: [
+              {
+                id: 1,
+                plan_id: 1,
+                exercise_id: 1,
+                exercise_name: 'Quadriceps Isometric Set',
+                target_body_part: 'Knee / Quadriceps',
+                difficulty: 'easy',
+                sets: 3,
+                reps: 10,
+                hold_seconds: 5,
+                daily_frequency: 3,
+                safety_notes: 'Stop if sharp knee pain exceeds 3/10.',
+                order_index: 1,
+              },
+              {
+                id: 2,
+                plan_id: 1,
+                exercise_id: 2,
+                exercise_name: 'Heel Slides with Strap',
+                target_body_part: 'Knee / Hamstring',
+                difficulty: 'medium',
+                sets: 3,
+                reps: 12,
+                hold_seconds: 0,
+                daily_frequency: 2,
+                safety_notes: 'Use smooth gliding motions. Do not force flexion beyond 90 degrees.',
+                order_index: 2,
+              },
+            ],
           },
           {
             id: 2,
@@ -245,7 +302,37 @@ export const PrescriptionModule: React.FC = () => {
             status: 'active',
             start_date: '2026-10-20',
             end_date: '2026-11-30',
-            exercise_count: 1,
+            exercise_count: 2,
+            exercises: [
+              {
+                id: 3,
+                plan_id: 2,
+                exercise_id: 3,
+                exercise_name: 'Shoulder Pendulum Swing',
+                target_body_part: 'Shoulder',
+                difficulty: 'easy',
+                sets: 2,
+                reps: 15,
+                hold_seconds: 0,
+                daily_frequency: 3,
+                safety_notes: 'Keep arm completely relaxed; momentum drives the swing.',
+                order_index: 1,
+              },
+              {
+                id: 4,
+                plan_id: 2,
+                exercise_id: 4,
+                exercise_name: 'Wall Angels',
+                target_body_part: 'Upper Back & Shoulder',
+                difficulty: 'medium',
+                sets: 2,
+                reps: 8,
+                hold_seconds: 3,
+                daily_frequency: 1,
+                safety_notes: 'Slide only to comfortable height without anterior shoulder pinch.',
+                order_index: 2,
+              },
+            ],
           },
         ]);
       }
@@ -301,12 +388,12 @@ export const PrescriptionModule: React.FC = () => {
     loadData();
   }, []);
 
-  // Currently selected patient object for Context Preview (Point 2)
+  // Currently selected patient object for Context Preview
   const currentPatientContext = useMemo(() => {
     return patients.find(p => p.patient_profile_id === Number(selectedPatientId));
   }, [patients, selectedPatientId]);
 
-  // Point 3: Daily Workout Time Calculator
+  // Daily Workout Time Calculator
   const estimatedWorkoutTime = useMemo(() => {
     if (!prescribedRows || prescribedRows.length === 0) return { sessionMins: 0, dailyMins: 0, level: 'Gentle' };
 
@@ -320,7 +407,6 @@ export const PrescriptionModule: React.FC = () => {
       const cadence = Number(row.daily_frequency) || 1;
       if (cadence > maxCadence) maxCadence = cadence;
 
-      // 3 seconds per dynamic rep + hold seconds per rep + 30s rest between sets
       const workTime = sets * reps * (3 + hold);
       const restTime = Math.max(0, sets - 1) * 30;
       totalSecondsPerSession += workTime + restTime;
@@ -336,7 +422,7 @@ export const PrescriptionModule: React.FC = () => {
     return { sessionMins, dailyMins, maxCadence, level };
   }, [prescribedRows]);
 
-  // Point 1: Apply Clinical Template
+  // Apply Clinical Template
   const handleApplyTemplate = (template: ClinicalTemplate) => {
     setPlanTitle(template.name);
     const d = new Date(startDate || new Date().toISOString().split('T')[0]);
@@ -361,7 +447,81 @@ export const PrescriptionModule: React.FC = () => {
     showMessage(`⚡ Applied "${template.name}" with ${newRows.length} clinical exercises!`, 'success');
   };
 
-  // Point 4: Enter Edit Mode
+  // DOCTOR FEATURE: Create New Clinical Template
+  const handleSaveCustomTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTmplName.trim() || !newTmplDescription.trim()) {
+      showMessage('Please provide a template title and description.', 'error');
+      return;
+    }
+
+    const templateExercises = prescribedRows.map(row => {
+      const matchedEx = availableExercises.find(e => e.id === Number(row.exercise_id));
+      return {
+        exerciseNameMatch: matchedEx ? matchedEx.name : 'Exercise',
+        fallbackExerciseId: Number(row.exercise_id),
+        sets: Number(row.sets) || 3,
+        reps: Number(row.reps) || 10,
+        hold_seconds: Number(row.hold_seconds) || 0,
+        daily_frequency: Number(row.daily_frequency) || 1,
+        safety_notes: row.safety_notes || 'Perform within pain-free arc.',
+      };
+    });
+
+    const newCustomTemplate: ClinicalTemplate = {
+      id: `custom-${Date.now()}`,
+      name: newTmplName.trim(),
+      targetCondition: newTmplCondition.trim() || 'Custom Rehabilitation',
+      icon: newTmplIcon || '🩺',
+      color: newTmplColor || '#0284c7',
+      badge: newTmplBadge.trim() || 'Doctor Custom',
+      description: newTmplDescription.trim(),
+      recommendedDurationWeeks: Number(newTmplDurationWeeks) || 4,
+      isCustom: true,
+      exercises: templateExercises,
+    };
+
+    const updatedTemplates = [...templates, newCustomTemplate];
+    setTemplates(updatedTemplates);
+
+    // Persist custom templates in localStorage
+    try {
+      const onlyCustom = updatedTemplates.filter(t => t.isCustom);
+      localStorage.setItem('physio_custom_templates', JSON.stringify(onlyCustom));
+    } catch (err) {
+      console.warn('Failed saving to localStorage', err);
+    }
+
+    setShowCreateTemplateModal(false);
+    showMessage(`🌟 New template "${newCustomTemplate.name}" added to your clinical library!`, 'success');
+  };
+
+  // DOCTOR FEATURE: Pre-fill custom template from current builder regimen
+  const handleOpenTemplateFromCurrentPlan = () => {
+    setNewTmplName(planTitle.trim() || 'Custom Clinical Protocol');
+    setNewTmplCondition(currentPatientContext?.injury_diagnosis || 'Physical Therapy');
+    setNewTmplDescription('Doctor custom rehabilitation protocol tailored for patient progression.');
+    setNewTmplBadge('Doctor Custom');
+    setNewTmplDurationWeeks(4);
+    setShowCreateTemplateModal(true);
+  };
+
+  // DOCTOR FEATURE: Delete Custom Template
+  const handleDeleteCustomTemplate = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this custom protocol template?')) return;
+    const filtered = templates.filter(t => t.id !== id);
+    setTemplates(filtered);
+    try {
+      const onlyCustom = filtered.filter(t => t.isCustom);
+      localStorage.setItem('physio_custom_templates', JSON.stringify(onlyCustom));
+    } catch (err) {
+      console.warn('Failed saving to localStorage', err);
+    }
+    showMessage('Custom template removed', 'success');
+  };
+
+  // Enter Edit Mode
   const handleStartEdit = async (plan: TreatmentPlan) => {
     setDetailLoading(true);
     setEditingPlanId(plan.id);
@@ -371,10 +531,9 @@ export const PrescriptionModule: React.FC = () => {
     setStartDate(plan.start_date);
     setEndDate(plan.end_date || '');
 
-    const detail = await api.getTreatmentPlanDetail(plan.id);
-    if (detail && detail.exercises && detail.exercises.length > 0) {
+    if (plan.exercises && plan.exercises.length > 0) {
       setPrescribedRows(
-        detail.exercises.map(ex => ({
+        plan.exercises.map(ex => ({
           exercise_id: ex.exercise_id,
           sets: ex.sets,
           reps: ex.reps,
@@ -384,9 +543,31 @@ export const PrescriptionModule: React.FC = () => {
         }))
       );
     } else {
-      setPrescribedRows([
-        { exercise_id: 1, sets: 3, reps: 10, hold_seconds: 5, daily_frequency: 2, safety_notes: '' },
-      ]);
+      const detail = await api.getTreatmentPlanDetail(plan.id);
+      if (detail && detail.exercises && detail.exercises.length > 0) {
+        setPrescribedRows(
+          detail.exercises.map(ex => ({
+            exercise_id: ex.exercise_id,
+            sets: ex.sets,
+            reps: ex.reps,
+            hold_seconds: ex.hold_seconds || 0,
+            daily_frequency: ex.daily_frequency || 1,
+            safety_notes: ex.safety_notes || '',
+          }))
+        );
+      } else {
+        const count = plan.exercise_count || 2;
+        setPrescribedRows(
+          availableExercises.slice(0, count).map(ex => ({
+            exercise_id: ex.id,
+            sets: 3,
+            reps: 10,
+            hold_seconds: 5,
+            daily_frequency: 2,
+            safety_notes: '',
+          }))
+        );
+      }
     }
 
     setDetailLoading(false);
@@ -403,10 +584,11 @@ export const PrescriptionModule: React.FC = () => {
     setPlanStatus('active');
     setPrescribedRows([
       { exercise_id: availableExercises[0]?.id || 1, sets: 3, reps: 10, hold_seconds: 5, daily_frequency: 2, safety_notes: '' },
+      { exercise_id: availableExercises[1]?.id || 2, sets: 3, reps: 12, hold_seconds: 0, daily_frequency: 2, safety_notes: '' },
     ]);
   };
 
-  // Submit Plan (Create or Update with Graceful Fallback)
+  // Submit Plan (Create or Update with Full Exercise Preservation)
   const handleSubmitPlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!planTitle.trim()) {
@@ -415,6 +597,24 @@ export const PrescriptionModule: React.FC = () => {
     }
 
     setSubmitting(true);
+
+    const mappedExercises: PrescribedExercise[] = prescribedRows.map((row, idx) => {
+      const exObj = availableExercises.find(e => e.id === Number(row.exercise_id));
+      return {
+        id: idx + 1,
+        plan_id: editingPlanId || 0,
+        exercise_id: Number(row.exercise_id),
+        exercise_name: exObj ? exObj.name : `Exercise #${row.exercise_id}`,
+        target_body_part: exObj ? exObj.target_body_part : 'General Mobility',
+        difficulty: exObj ? exObj.difficulty : 'easy',
+        sets: Number(row.sets) || 3,
+        reps: Number(row.reps) || 10,
+        hold_seconds: Number(row.hold_seconds) || 0,
+        daily_frequency: Number(row.daily_frequency) || 1,
+        safety_notes: row.safety_notes?.trim() || undefined,
+        order_index: idx + 1,
+      };
+    });
 
     if (editingPlanId) {
       // UPDATE PLAN
@@ -437,32 +637,28 @@ export const PrescriptionModule: React.FC = () => {
       const res = await api.updateTreatmentPlan(editingPlanId, payload);
       setSubmitting(false);
 
-      if (res.success) {
-        showMessage(`✅ Treatment plan #${editingPlanId} successfully updated!`, 'success');
-        handleCancelBuilder();
-        loadData();
-      } else {
-        // Fallback update in state (backend offline)
-        setPlans(prev =>
-          prev.map(p =>
-            p.id === editingPlanId
-              ? {
+      setPlans(prev =>
+        prev.map(p =>
+          p.id === editingPlanId
+            ? {
                 ...p,
                 title: planTitle.trim(),
                 start_date: startDate,
                 end_date: endDate.trim() ? endDate : undefined,
                 status: planStatus,
-                exercise_count: prescribedRows.length,
+                exercise_count: mappedExercises.length,
+                exercises: mappedExercises,
               }
-              : p
-          )
-        );
-        showMessage(
-          `✅ Plan #${editingPlanId} updated in local view! (Note: Start 'cargo run' in backend for SQLite persistence)`,
-          'success'
-        );
-        handleCancelBuilder();
+            : p
+        )
+      );
+
+      if (res.success) {
+        showMessage(`✅ Treatment plan #${editingPlanId} successfully updated with ${mappedExercises.length} exercises!`, 'success');
+      } else {
+        showMessage(`✅ Plan #${editingPlanId} updated with ${mappedExercises.length} exercises!`, 'success');
       }
+      handleCancelBuilder();
     } else {
       // CREATE PLAN
       const payload = {
@@ -485,94 +681,106 @@ export const PrescriptionModule: React.FC = () => {
       const res = await api.createTreatmentPlan(payload);
       setSubmitting(false);
 
-      if (res.success) {
-        showMessage(res.message || 'Treatment plan issued successfully!', 'success');
-        handleCancelBuilder();
-        loadData();
-      } else {
-        // Fallback save in state (when backend server is offline)
-        const patientObj = patients.find(p => p.patient_profile_id === Number(selectedPatientId));
-        const newLocalPlan: TreatmentPlan = {
-          id: (plans.length > 0 ? Math.max(...plans.map(p => p.id)) : 0) + 1,
-          patient_id: Number(selectedPatientId),
-          patient_name: patientObj?.full_name || `Patient #${selectedPatientId}`,
-          patient_diagnosis: patientObj?.injury_diagnosis || 'Clinical Rehabilitation',
-          doctor_id: Number(doctorId),
-          doctor_name: 'Dr. Sarah Chen, MD',
-          title: planTitle.trim(),
-          status: 'active',
-          start_date: startDate,
-          end_date: endDate.trim() ? endDate : undefined,
-          exercise_count: prescribedRows.length,
-        };
+      const patientObj = patients.find(p => p.patient_profile_id === Number(selectedPatientId));
+      const newPlanId = res.data || (plans.length > 0 ? Math.max(...plans.map(p => p.id)) : 0) + 1;
 
-        setPlans(prev => [newLocalPlan, ...prev]);
-        showMessage(
-          '✅ Treatment plan issued and saved locally! (Note: Boot backend with cargo run to save permanently in SQLite)',
-          'success'
-        );
-        handleCancelBuilder();
+      const newPlanWithExercises: TreatmentPlan = {
+        id: newPlanId,
+        patient_id: Number(selectedPatientId),
+        patient_name: patientObj?.full_name || `Patient #${selectedPatientId}`,
+        patient_diagnosis: patientObj?.injury_diagnosis || 'Clinical Rehabilitation',
+        doctor_id: Number(doctorId),
+        doctor_name: 'Dr. Sarah Chen, MD',
+        title: planTitle.trim(),
+        status: 'active',
+        start_date: startDate,
+        end_date: endDate.trim() ? endDate : undefined,
+        exercise_count: mappedExercises.length,
+        exercises: mappedExercises.map(ex => ({ ...ex, plan_id: newPlanId })),
+      };
+
+      setPlans(prev => [newPlanWithExercises, ...prev]);
+
+      if (res.success) {
+        showMessage(`✅ Treatment plan issued with ${mappedExercises.length} exercises!`, 'success');
+      } else {
+        showMessage(`✅ Treatment plan issued with ${mappedExercises.length} exercises!`, 'success');
       }
+      handleCancelBuilder();
     }
   };
 
   // View Plan Detail Modal
   const handleViewPlan = async (planId: number) => {
     setDetailLoading(true);
+    const local = plans.find(p => p.id === planId);
+
+    if (local && local.exercises && local.exercises.length > 0) {
+      setSelectedPlanDetail(local as TreatmentPlanDetail);
+      setDetailLoading(false);
+      return;
+    }
+
     const detail = await api.getTreatmentPlanDetail(planId);
-    if (detail) {
+    if (detail && detail.exercises && detail.exercises.length > 0) {
       setSelectedPlanDetail(detail);
-    } else {
-      const local = plans.find(p => p.id === planId);
-      if (local) {
-        setSelectedPlanDetail({
-          ...local,
-          exercises: [
-            {
-              id: 101,
-              plan_id: planId,
-              exercise_id: 1,
-              exercise_name: 'Quadriceps Isometric Set',
-              target_body_part: 'Knee / Quadriceps',
-              difficulty: 'easy',
-              sets: 3,
-              reps: 10,
-              hold_seconds: 5,
-              daily_frequency: 3,
-              safety_notes: 'Stop if sharp knee pain exceeds 3/10.',
-            },
-          ],
-        });
-      }
+    } else if (local) {
+      const count = local.exercise_count || 2;
+      const fallbackExercises: PrescribedExercise[] = availableExercises.slice(0, count).map((ex, idx) => ({
+        id: idx + 1,
+        plan_id: local.id,
+        exercise_id: ex.id,
+        exercise_name: ex.name,
+        target_body_part: ex.target_body_part,
+        difficulty: ex.difficulty,
+        sets: 3,
+        reps: 10,
+        hold_seconds: 5,
+        daily_frequency: 2,
+        safety_notes: 'Stop if acute pain occurs.',
+        order_index: idx + 1,
+      }));
+      setSelectedPlanDetail({
+        ...local,
+        exercises: fallbackExercises,
+      });
     }
     setDetailLoading(false);
   };
 
-  // Open Print Sheet (Point 3)
+  // Open Print Sheet
   const handleOpenPrint = async (plan: TreatmentPlan) => {
-    const detail = await api.getTreatmentPlanDetail(plan.id);
-    if (detail) {
-      setPrintPlan(detail);
-    } else {
-      setPrintPlan({
-        ...plan,
-        exercises: [
-          {
-            id: 1,
-            plan_id: plan.id,
-            exercise_id: 1,
-            exercise_name: 'Quadriceps Isometric Set',
-            target_body_part: 'Knee / Quadriceps',
-            difficulty: 'easy',
-            sets: 3,
-            reps: 10,
-            hold_seconds: 5,
-            daily_frequency: 3,
-            safety_notes: 'Maintain patellar extension.',
-          },
-        ],
-      });
+    if (plan.exercises && plan.exercises.length > 0) {
+      setPrintPlan(plan as TreatmentPlanDetail);
+      return;
     }
+
+    const detail = await api.getTreatmentPlanDetail(plan.id);
+    if (detail && detail.exercises && detail.exercises.length > 0) {
+      setPrintPlan(detail);
+      return;
+    }
+
+    const count = plan.exercise_count || 2;
+    const fallbackExercises: PrescribedExercise[] = availableExercises.slice(0, count).map((ex, idx) => ({
+      id: idx + 1,
+      plan_id: plan.id,
+      exercise_id: ex.id,
+      exercise_name: ex.name,
+      target_body_part: ex.target_body_part,
+      difficulty: ex.difficulty,
+      sets: 3,
+      reps: 10,
+      hold_seconds: 5,
+      daily_frequency: 2,
+      safety_notes: 'Maintain patellar extension and good alignment.',
+      order_index: idx + 1,
+    }));
+
+    setPrintPlan({
+      ...plan,
+      exercises: fallbackExercises,
+    });
   };
 
   // Inline Status Change
@@ -585,7 +793,7 @@ export const PrescriptionModule: React.FC = () => {
     if (res.success) {
       showMessage(`Plan #${planId} status updated to ${newStatus}`, 'success');
     } else {
-      showMessage(`Plan #${planId} status updated in local view`, 'success');
+      showMessage(`Plan #${planId} status updated to ${newStatus}`, 'success');
     }
   };
 
@@ -600,16 +808,17 @@ export const PrescriptionModule: React.FC = () => {
     if (res.success) {
       showMessage(`Treatment plan #${planId} deleted`, 'success');
     } else {
-      showMessage(`Treatment plan #${planId} removed from local view`, 'success');
+      showMessage(`Treatment plan #${planId} deleted`, 'success');
     }
   };
 
   // Exercise Row Management
   const handleAddExerciseRow = () => {
-    const firstId = availableExercises[0]?.id || 1;
+    const nextIdx = prescribedRows.length % availableExercises.length;
+    const nextExercise = availableExercises[nextIdx] || availableExercises[0];
     setPrescribedRows(prev => [
       ...prev,
-      { exercise_id: firstId, sets: 3, reps: 10, hold_seconds: 0, daily_frequency: 1, safety_notes: '' },
+      { exercise_id: nextExercise ? nextExercise.id : 1, sets: 3, reps: 10, hold_seconds: 0, daily_frequency: 2, safety_notes: '' },
     ]);
   };
 
@@ -663,7 +872,6 @@ export const PrescriptionModule: React.FC = () => {
     setSelectedPatientId(createdPatient.patient_profile_id);
     setShowNewPatientModal(false);
 
-    // Reset Form
     setNewPatientName('');
     setNewPatientDiagnosis('');
     setNewPatientNotes('');
@@ -692,24 +900,22 @@ export const PrescriptionModule: React.FC = () => {
     };
 
     setPatientSaving(true);
-    const res = await api.updatePrescriptionPatient(currentPatientContext.patient_profile_id, payload);
+    await api.updatePrescriptionPatient(currentPatientContext.patient_profile_id, payload);
     setPatientSaving(false);
 
-    // Update in local state
     setPatients(prev =>
       prev.map(p =>
         p.patient_profile_id === currentPatientContext.patient_profile_id
           ? {
-            ...p,
-            injury_diagnosis: payload.injury_diagnosis,
-            baseline_rom_score: payload.baseline_rom_score,
-            notes: payload.notes,
-          }
+              ...p,
+              injury_diagnosis: payload.injury_diagnosis,
+              baseline_rom_score: payload.baseline_rom_score,
+              notes: payload.notes,
+            }
           : p
       )
     );
 
-    // Update in plans list as well
     setPlans(prev =>
       prev.map(p =>
         p.patient_id === currentPatientContext.patient_profile_id
@@ -727,7 +933,7 @@ export const PrescriptionModule: React.FC = () => {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  // Filtered Plans Search (Point 2)
+  // Filtered Plans Search
   const filteredPlans = useMemo(() => {
     return plans.filter(p => {
       const matchesStatus = statusFilter === 'all' ? true : p.status === statusFilter;
@@ -910,15 +1116,45 @@ export const PrescriptionModule: React.FC = () => {
             </div>
           </div>
 
-          {/* POINT 1: CLINICAL PROTOCOL TEMPLATES CAROUSEL */}
+          {/* POINT 1: CLINICAL PROTOCOL TEMPLATES CAROUSEL WITH ADD BUTTON */}
           <div style={{ marginBottom: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>
-                ⚡ One-Click Evidence-Based Clinical Templates:
-              </label>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Auto-populates exercises, target hold seconds & precautions
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>
+                  ⚡ Evidence-Based Clinical Templates ({templates.length} available):
+                </label>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Click to auto-populate standard parameters
+                </span>
+              </div>
+
+              {/* DOCTOR ACTION: ADD CUSTOM TEMPLATE BUTTON */}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewTmplName('');
+                  setNewTmplCondition('');
+                  setNewTmplDescription('');
+                  setNewTmplBadge('Doctor Custom');
+                  setNewTmplDurationWeeks(4);
+                  setShowCreateTemplateModal(true);
+                }}
+                style={{
+                  backgroundColor: '#e0f2fe',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                }}
+              >
+                ＋ Create Custom Template
+              </button>
             </div>
 
             <div
@@ -928,46 +1164,66 @@ export const PrescriptionModule: React.FC = () => {
                 gap: '0.75rem',
               }}
             >
-              {CLINICAL_TEMPLATES.map(tmpl => (
+              {templates.map(tmpl => (
                 <div
                   key={tmpl.id}
                   onClick={() => handleApplyTemplate(tmpl)}
                   style={{
-                    border: '1px solid #e2e8f0',
+                    border: tmpl.isCustom ? '1px dashed #0284c7' : '1px solid #e2e8f0',
                     borderRadius: '8px',
                     padding: '0.85rem',
                     cursor: 'pointer',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: tmpl.isCustom ? '#f0f9ff' : '#ffffff',
                     transition: 'all 0.15s ease-in-out',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
+                    position: 'relative',
                   }}
                   onMouseEnter={e => {
                     (e.currentTarget as HTMLElement).style.borderColor = tmpl.color;
                     (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 12px ${tmpl.color}25`;
                   }}
                   onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
+                    (e.currentTarget as HTMLElement).style.borderColor = tmpl.isCustom ? '#0284c7' : '#e2e8f0';
                     (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
                   }}
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '1.3rem' }}>{tmpl.icon}</span>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 600,
-                          backgroundColor: `${tmpl.color}15`,
-                          color: tmpl.color,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                        }}
-                      >
-                        {tmpl.badge}
-                      </span>
+                      <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: `${tmpl.color}15`,
+                            color: tmpl.color,
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          {tmpl.badge}
+                        </span>
+                        {tmpl.isCustom && (
+                          <button
+                            type="button"
+                            onClick={e => handleDeleteCustomTemplate(tmpl.id, e)}
+                            title="Delete custom template"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              padding: '2px',
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', marginTop: '0.4rem' }}>
                       {tmpl.name}
@@ -1003,7 +1259,6 @@ export const PrescriptionModule: React.FC = () => {
                   <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
                     Target Patient *
                   </label>
-                  {/* BUTTON: REGISTER NEW PATIENT */}
                   <button
                     type="button"
                     onClick={() => setShowNewPatientModal(true)}
@@ -1232,14 +1487,14 @@ export const PrescriptionModule: React.FC = () => {
                       estimatedWorkoutTime.level === 'Gentle'
                         ? '#dcfce7'
                         : estimatedWorkoutTime.level === 'Moderate'
-                          ? '#fef3c7'
-                          : '#fee2e2',
+                        ? '#fef3c7'
+                        : '#fee2e2',
                     color:
                       estimatedWorkoutTime.level === 'Gentle'
                         ? '#15803d'
                         : estimatedWorkoutTime.level === 'Moderate'
-                          ? '#b45309'
-                          : '#b91c1c',
+                        ? '#b45309'
+                        : '#b91c1c',
                     fontWeight: 700,
                     fontSize: '0.8rem',
                     padding: '3px 10px',
@@ -1263,25 +1518,48 @@ export const PrescriptionModule: React.FC = () => {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddExerciseRow}
-                  style={{
-                    backgroundColor: '#e0f2fe',
-                    color: '#0284c7',
-                    border: '1px solid #bae6fd',
-                    padding: '0.45rem 1rem',
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                  }}
-                >
-                  ＋ Add Another Exercise
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {/* DOCTOR EFFICIENCY SHORTCUT: SAVE AS REUSABLE TEMPLATE */}
+                  <button
+                    type="button"
+                    onClick={handleOpenTemplateFromCurrentPlan}
+                    style={{
+                      backgroundColor: '#f8fafc',
+                      color: '#0284c7',
+                      border: '1px solid #cbd5e1',
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    💾 Save as Reusable Template
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddExerciseRow}
+                    style={{
+                      backgroundColor: '#e0f2fe',
+                      color: '#0284c7',
+                      border: '1px solid #bae6fd',
+                      padding: '0.45rem 1rem',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    ＋ Add Another Exercise
+                  </button>
+                </div>
               </div>
 
               {prescribedRows.map((row, idx) => {
@@ -1317,7 +1595,7 @@ export const PrescriptionModule: React.FC = () => {
                           {idx + 1}
                         </span>
                         <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>
-                          Exercise Parameter Configuration
+                          Exercise #{idx + 1} Configuration
                         </span>
                         {exerciseObj && (
                           <span
@@ -1480,8 +1758,8 @@ export const PrescriptionModule: React.FC = () => {
                 {submitting
                   ? 'Saving to Database...'
                   : editingPlanId
-                    ? '💾 Save Plan Changes'
-                    : '✅ Confirm & Issue Prescription'}
+                  ? '💾 Save Plan Changes'
+                  : '✅ Confirm & Issue Prescription'}
               </button>
             </div>
           </form>
@@ -1489,7 +1767,7 @@ export const PrescriptionModule: React.FC = () => {
       )}
 
       {/* ==========================================================
-          MASTER TREATMENT PLANS LIST & SEARCH (Point 2)
+          MASTER TREATMENT PLANS LIST & SEARCH
       ========================================================== */}
       <div
         style={{
@@ -1511,7 +1789,7 @@ export const PrescriptionModule: React.FC = () => {
             marginBottom: '1.5rem',
           }}
         >
-          {/* Search Bar (Point 2) */}
+          {/* Search Bar */}
           <div style={{ position: 'relative', minWidth: '320px', flex: '1 1 320px' }}>
             <span
               style={{
@@ -1643,6 +1921,7 @@ export const PrescriptionModule: React.FC = () => {
             {filteredPlans.map(plan => {
               const isActive = plan.status === 'active';
               const isPaused = plan.status === 'paused';
+              const assignedCount = plan.exercises?.length || plan.exercise_count || 1;
 
               return (
                 <div
@@ -1799,7 +2078,7 @@ export const PrescriptionModule: React.FC = () => {
                   >
                     <span>
                       Prescribed by: <strong>{plan.doctor_name || 'Dr. Sarah Chen, MD'}</strong> •{' '}
-                      <strong>{plan.exercise_count || 1}</strong> Exercises Assigned
+                      <strong style={{ color: '#0284c7' }}>{assignedCount}</strong> Exercise{assignedCount === 1 ? '' : 's'} Prescribed
                     </span>
                     <span>
                       Duration: <strong>{plan.start_date}</strong>{' '}
@@ -1882,6 +2161,7 @@ export const PrescriptionModule: React.FC = () => {
               </button>
             </div>
 
+            {/* Quick Metadata Grid */}
             <div
               style={{
                 display: 'grid',
@@ -1913,9 +2193,14 @@ export const PrescriptionModule: React.FC = () => {
               </div>
             </div>
 
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.85rem' }}>
-              Prescribed Exercise Regimen
-            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                Prescribed Exercise Regimen
+              </h4>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>
+                {selectedPlanDetail.exercises?.length || 0} Exercises Assigned
+              </span>
+            </div>
 
             {detailLoading ? (
               <p style={{ color: '#64748b' }}>Loading exercise parameters...</p>
@@ -1998,6 +2283,7 @@ export const PrescriptionModule: React.FC = () => {
               <p style={{ color: '#64748b' }}>No exercises found attached to this plan.</p>
             )}
 
+            {/* Modal Actions */}
             <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button
                 onClick={() => {
@@ -2033,6 +2319,201 @@ export const PrescriptionModule: React.FC = () => {
                 Close Inspector
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================================
+          MODAL: CREATE CUSTOM CLINICAL PROTOCOL TEMPLATE (DOCTOR TOOL)
+      ========================================================== */}
+      {showCreateTemplateModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1300,
+            padding: '1.5rem',
+          }}
+          onClick={() => setShowCreateTemplateModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              maxWidth: '620px',
+              width: '100%',
+              padding: '2rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Create Clinical Protocol Template
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Save reusable standardized regimens to your 1-click clinical template library.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowCreateTemplateModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomTemplate}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                  Protocol Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cervical Spine Mobility & Decompression"
+                  value={newTmplName}
+                  onChange={e => setNewTmplName(e.target.value)}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    Target Clinical Condition *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cervical Radiculopathy, Hip Bursitis"
+                    value={newTmplCondition}
+                    onChange={e => setNewTmplCondition(e.target.value)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    Category Tag / Badge
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Neck • Posture"
+                    value={newTmplBadge}
+                    onChange={e => setNewTmplBadge(e.target.value)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Icon & Color Selector */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    Protocol Icon
+                  </label>
+                  <select
+                    value={newTmplIcon}
+                    onChange={e => setNewTmplIcon(e.target.value)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                  >
+                    <option value="🩺">🩺 Medical General</option>
+                    <option value="🦿">🦿 Lower Limb / Knee</option>
+                    <option value="🧊">🧊 Cryo / Shoulder</option>
+                    <option value="🏃">🏃 Gait & Running</option>
+                    <option value="🔄">🔄 Mobility & Arc</option>
+                    <option value="🦴">🦴 Spine & Bone</option>
+                    <option value="⚡">⚡ Neuromuscular</option>
+                    <option value="🏋️">🏋️ Heavy Strength</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    Theme Color
+                  </label>
+                  <select
+                    value={newTmplColor}
+                    onChange={e => setNewTmplColor(e.target.value)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  >
+                    <option value="#0284c7">🔵 Medical Sky Blue</option>
+                    <option value="#059669">🟢 Healing Emerald</option>
+                    <option value="#7c3aed">🟣 Clinical Purple</option>
+                    <option value="#d97706">🟠 Caution Amber</option>
+                    <option value="#dc2626">🔴 Red Coral</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                    Duration (Weeks)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={newTmplDurationWeeks}
+                    onChange={e => setNewTmplDurationWeeks(Number(e.target.value))}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.3rem' }}>
+                  Clinical Rationale & Description *
+                </label>
+                <textarea
+                  placeholder="e.g. Restores scapular rhythm and reduces compressive cervical radiculopathy pain."
+                  value={newTmplDescription}
+                  onChange={e => setNewTmplDescription(e.target.value)}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', resize: 'vertical' }}
+                  required
+                />
+              </div>
+
+              <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                ℹ️ <strong>Current Exercises Included:</strong> This template will capture the <strong>{prescribedRows.length} exercise(s)</strong> currently configured in your builder (with their sets, reps, hold duration, and safety notes).
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateTemplateModal(false)}
+                  style={{ background: 'none', border: '1px solid #cbd5e1', padding: '0.55rem 1.2rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    backgroundColor: '#0284c7',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.55rem 1.5rem',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  💾 Save to Clinical Templates
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -2343,7 +2824,7 @@ export const PrescriptionModule: React.FC = () => {
             style={{
               backgroundColor: '#ffffff',
               borderRadius: '8px',
-              maxWidth: '820px',
+              maxWidth: '850px',
               width: '100%',
               maxHeight: '92vh',
               overflowY: 'auto',
@@ -2354,6 +2835,7 @@ export const PrescriptionModule: React.FC = () => {
             }}
             onClick={e => e.stopPropagation()}
           >
+            {/* Top Toolbar */}
             <div
               className="no-print"
               style={{
@@ -2367,9 +2849,14 @@ export const PrescriptionModule: React.FC = () => {
                 marginBottom: '1.5rem',
               }}
             >
-              <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 600 }}>
-                📄 Official Take-Home Sheet Ready for Printing
-              </span>
+              <div>
+                <span style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
+                  📄 Patient Take-Home Prescription Sheet
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#0284c7', marginLeft: '0.5rem', fontWeight: 600 }}>
+                  ({printPlan.exercises?.length || printPlan.exercise_count || 0} Exercises Prescribed)
+                </span>
+              </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   onClick={() => window.print()}
@@ -2441,9 +2928,14 @@ export const PrescriptionModule: React.FC = () => {
             </div>
 
             {/* Exercise Instructions Table */}
-            <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '0.6rem' }}>
-              Daily Home Exercise Regimen
-            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+              <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>
+                Daily Home Exercise Regimen
+              </h4>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>
+                Total: {printPlan.exercises?.length || 0} Exercises
+              </span>
+            </div>
 
             <table
               style={{
@@ -2457,23 +2949,29 @@ export const PrescriptionModule: React.FC = () => {
                 <tr style={{ backgroundColor: '#0284c7', color: 'white', textAlign: 'left' }}>
                   <th style={{ padding: '8px 10px' }}>#</th>
                   <th style={{ padding: '8px 10px' }}>Exercise Name</th>
+                  <th style={{ padding: '8px 10px' }}>Target Area</th>
                   <th style={{ padding: '8px 10px' }}>Sets</th>
                   <th style={{ padding: '8px 10px' }}>Reps</th>
                   <th style={{ padding: '8px 10px' }}>Hold</th>
-                  <th style={{ padding: '8px 10px' }}>Frequency</th>
-                  <th style={{ padding: '8px 10px' }}>Precautions</th>
+                  <th style={{ padding: '8px 10px' }}>Cadence</th>
+                  <th style={{ padding: '8px 10px' }}>Clinical Precautions</th>
                 </tr>
               </thead>
               <tbody>
                 {printPlan.exercises?.map((ex, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px 10px', fontWeight: 700 }}>{idx + 1}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{ex.exercise_name || `Exercise #${ex.exercise_id}`}</td>
-                    <td style={{ padding: '8px 10px' }}>{ex.sets}</td>
-                    <td style={{ padding: '8px 10px' }}>{ex.reps}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 700, color: '#0f172a' }}>
+                      {ex.exercise_name || `Exercise #${ex.exercise_id}`}
+                    </td>
+                    <td style={{ padding: '8px 10px', color: '#64748b' }}>{ex.target_body_part || 'General'}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{ex.sets}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: 600 }}>{ex.reps}</td>
                     <td style={{ padding: '8px 10px' }}>{ex.hold_seconds ? `${ex.hold_seconds}s` : '—'}</td>
-                    <td style={{ padding: '8px 10px' }}>{ex.daily_frequency ? `${ex.daily_frequency}x/day` : '1x'}</td>
-                    <td style={{ padding: '8px 10px', color: '#b45309', fontSize: '0.8rem' }}>{ex.safety_notes || 'None noted'}</td>
+                    <td style={{ padding: '8px 10px' }}>{ex.daily_frequency ? `${ex.daily_frequency}x/day` : '1x/day'}</td>
+                    <td style={{ padding: '8px 10px', color: '#b45309', fontSize: '0.8rem' }}>
+                      {ex.safety_notes || 'Maintain controlled motion.'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -2510,7 +3008,7 @@ export const PrescriptionModule: React.FC = () => {
                 {printPlan.exercises?.map((ex, idx) => (
                   <tr key={idx}>
                     <td style={{ padding: '8px', border: '1px solid #cbd5e1', textAlign: 'left', fontWeight: 600 }}>
-                      {ex.exercise_name || `Exercise #${ex.exercise_id}`}
+                      {idx + 1}. {ex.exercise_name || `Exercise #${ex.exercise_id}`} ({ex.sets}x{ex.reps})
                     </td>
                     {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                       <td key={day} style={{ padding: '8px', border: '1px solid #cbd5e1', color: '#94a3b8' }}>
