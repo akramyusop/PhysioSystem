@@ -218,13 +218,62 @@ export interface ActivityLog {
   logged_at: string;
 }
 
-// Module 6: Analytics Summary
+// Module 6: Analytics Summary & Detailed Trends
 export interface PatientRecoverySummary {
   patient_profile_id: number;
   patient_name: string;
   injury_diagnosis: string;
+  baseline_rom_score?: number | null;
   total_sessions_logged: number;
-  average_pain_score?: number;
-  max_rom_achieved?: number;
-  last_activity_date?: string;
+  average_pain_score?: number | null;
+  latest_pain_score?: number | null;
+  max_rom_achieved?: number | null;
+  adherence_rate_pct?: number;
+  clinical_alert_count?: number;
+  last_activity_date?: string | null;
+}
+
+export interface RomDataPoint {
+  date: string;
+  rom_angle: number;
+  target_angle: number;
+  exercise_name: string;
+  source: 'game' | 'nurse' | 'self';
+}
+
+export interface PainDataPoint {
+  date: string;
+  pain_score: number;
+  source: string;
+  notes?: string;
+}
+
+export interface ClinicalAlertItem {
+  id: string | number;
+  date: string;
+  patient_name?: string;
+  severity: 'low' | 'moderate' | 'high' | 'critical';
+  alert_type: string;
+  message: string;
+  acknowledged?: boolean;
+}
+
+export interface PatientTrendData {
+  patient_info: {
+    id: number;
+    name: string;
+    diagnosis: string;
+    baseline_rom: number;
+    doctor_name: string;
+    start_date: string;
+  };
+  rom_progression: RomDataPoint[];
+  pain_trend: PainDataPoint[];
+  adherence: {
+    prescribed_sessions: number;
+    completed_sessions: number;
+    compliance_pct: number;
+    streak_days: number;
+  };
+  clinical_alerts: ClinicalAlertItem[];
 }

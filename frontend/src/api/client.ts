@@ -16,6 +16,7 @@ import {
   HighScore,
   ActivityLog,
   PatientRecoverySummary,
+  PatientTrendData,
 } from '../types';
 
 const BASE_URL = '/api';
@@ -143,4 +144,5 @@ export const api = {
 
   // Module 6: Analytics
   getRecoverySummary: () => fetchJson<PatientRecoverySummary[]>('/analytics/summary'),
+  getPatientTrends: (patientId: number) => fetchJson<PatientTrendData>('/analytics/trends/' + patientId),
 };
