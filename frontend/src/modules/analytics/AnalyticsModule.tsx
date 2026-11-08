@@ -473,7 +473,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: !isPatient && activeAlerts.length > 0 ? '#b45309' : '#0f172a', margin: '0.25rem 0' }}>
             {isPatient ? 'On Track' : `${activeAlerts.length} Active`}
           </div>
-          <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500 }}>
+          <div style={{ fontSize: '0.82rem', color: '#d97706', fontWeight: 500 }}>
             {isPatient ? 'Phase 2 strengthening active' : 'High pain or vitals elevation'}
           </div>
         </div>
@@ -768,7 +768,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
             <div>
               <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>Pain Level Trend & Mitigation</h3>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                Numeric Pain Rating Scale (0 to 10) monitored across treatment timeline
+                Pain score history over time (0 = No Pain, 10 = Severe). Falling bars indicate successful recovery.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.75rem', alignItems: 'center' }}>
@@ -869,8 +869,81 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
 
       {/* Role-Specific Bottom Section */}
       {!isPatient ? (
-        /* Doctor View: Complete 4-Patient Cohort Triage Table */
-        <div className="card">
+        /* Doctor View: Planning Stepper + Complete 4-Patient Cohort Triage Table */
+        <>
+          {/* 4-Phase Clinical Recovery Progression Stepper (Doctor Planning Tool) */}
+          <div
+            className="card"
+            style={{
+              padding: '1.25rem 1.5rem',
+              marginBottom: '1.5rem',
+              background: '#ffffff',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#0f172a', fontWeight: 700 }}>
+                  Clinical Pathway &amp; Protocol Stepper &mdash; Focus: {selectedSummary?.patient_name}
+                </h4>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                  Evidence-based 4-phase protocol to guide prescription design and discharge planning
+                </div>
+              </div>
+              <span
+                style={{
+                  background: '#dcfce7',
+                  color: '#166534',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '999px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                }}
+              >
+                Phase 2 Active (88% Milestones Met)
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <div style={{ padding: '0.85rem', borderRadius: '8px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Phase 1 &bull; Completed</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>Acute Protection &amp; Pain Control</div>
+                <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '0.2rem' }}>Swelling controlled, cryotherapy routine</div>
+              </div>
+
+              <div style={{ padding: '0.85rem', borderRadius: '8px', background: '#eff6ff', border: '2px solid #0284c7', boxShadow: '0 2px 6px rgba(2, 132, 199, 0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase' }}>Phase 2 &bull; Current Stage</span>
+                  <span style={{ background: '#0284c7', color: '#ffffff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>2</span>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>Active ROM &amp; Mobility</div>
+                <div style={{ fontSize: '0.78rem', color: '#0369a1', marginTop: '0.2rem' }}>ROM: {selectedSummary?.max_rom_achieved ?? 98}&deg;, pain &le; 2/10</div>
+              </div>
+
+              <div style={{ padding: '0.85rem', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Phase 3 &bull; Upcoming</span>
+                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700 }}>3</span>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#475569' }}>Progressive Resistance Loading</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>Eccentric loading, resistance bands</div>
+              </div>
+
+              <div style={{ padding: '0.85rem', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Phase 4 &bull; Target</span>
+                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700 }}>4</span>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#475569' }}>Discharge &amp; Functional Recovery</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>Target: 110&deg; functional discharge</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Cohort Triage & Patient Matrix</h3>
@@ -988,6 +1061,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
             </table>
           </div>
         </div>
+        </>
       ) : (
         /* Patient View: Personal Milestones & Game Action */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
@@ -999,7 +1073,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem', background: '#f0fdf4', borderRadius: '6px' }}>
-                <span style={{ color: '#16a34a', fontWeight: 800 }}>&check;</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Intake Mobility Exam Complete</div>
                   <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Baseline angle recorded at {trendData?.patient_info.baseline_rom || 85}&deg;</div>
@@ -1007,7 +1081,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem', background: '#f0fdf4', borderRadius: '6px' }}>
-                <span style={{ color: '#16a34a', fontWeight: 800 }}>&check;</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Pain Down to Mild (2/10)</div>
                   <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Swelling controlled, significant relief achieved</div>
