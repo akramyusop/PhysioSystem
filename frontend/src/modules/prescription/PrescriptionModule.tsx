@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api/client';
 import {
+  AuthUser,
   TreatmentPlan,
   TreatmentPlanDetail,
   PatientOption,
@@ -156,7 +157,21 @@ const CLINICAL_TEMPLATES: ClinicalTemplate[] = [
   },
 ];
 
-export const PrescriptionModule: React.FC = () => {
+export interface PrescriptionModuleProps {
+  currentUser?: AuthUser | null;
+  onNavigateToLibrary?: () => void;
+  onNavigateToGame?: () => void;
+}
+
+export const PrescriptionModule: React.FC<PrescriptionModuleProps> = ({
+  currentUser,
+  onNavigateToLibrary,
+  onNavigateToGame,
+}) => {
+  const isPatient = currentUser?.role === 'patient';
+  const patientProfileId = currentUser?.patient_profile_id || (currentUser?.full_name?.toLowerCase().includes('john') ? 1 : 1);
+  const [patientActivePlanDetail, setPatientActivePlanDetail] = useState<TreatmentPlanDetail | null>(null);
+  const [completedToday, setCompletedToday] = useState<{ [exerciseId: number]: boolean }>({});
   // Master state
   const [plans, setPlans] = useState<TreatmentPlan[]>([]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
@@ -219,7 +234,59 @@ export const PrescriptionModule: React.FC = () => {
 
       if (plansData && plansData.length > 0) {
         setPlans(plansData);
+        if (isPatient) {
+          const myPlan = plansData.find(p => p.patient_id === patientProfileId && p.status === 'active') ||
+                         plansData.find(p => p.patient_id === patientProfileId) ||
+                         plansData[0];
+          if (myPlan) {
+            api.getTreatmentPlanDetail(myPlan.id).then(detail => {
+              if (detail) setPatientActivePlanDetail(detail);
+            });
+          }
+        }
       } else {
+        if (isPatient) {
+          setPatientActivePlanDetail({
+            id: 1,
+            patient_id: 1,
+            patient_name: 'John Doe',
+            patient_diagnosis: 'Post-Op Right ACL Reconstruction',
+            doctor_id: 1,
+            doctor_name: 'Dr. Sarah Chen, MD',
+            title: 'Phase 1 ACL Recovery Protocol',
+            status: 'active',
+            start_date: '2026-10-15',
+            end_date: '2026-12-01',
+            exercises: [
+              {
+                id: 1,
+                plan_id: 1,
+                exercise_id: 1,
+                exercise_name: 'Quadriceps Isometric Set',
+                target_body_part: 'Knee / Quadriceps',
+                difficulty: 'easy',
+                sets: 3,
+                reps: 10,
+                hold_seconds: 5,
+                daily_frequency: 3,
+                safety_notes: 'Stop if sharp knee pain exceeds 4/10.',
+              },
+              {
+                id: 2,
+                plan_id: 1,
+                exercise_id: 2,
+                exercise_name: 'Heel Slides with Strap',
+                target_body_part: 'Knee / Hamstring',
+                difficulty: 'medium',
+                sets: 3,
+                reps: 12,
+                hold_seconds: 0,
+                daily_frequency: 2,
+                safety_notes: 'Use smooth gliding motions. Do not force flexion.',
+              },
+            ],
+          });
+        }
         setPlans([
           {
             id: 1,
@@ -743,6 +810,8 @@ export const PrescriptionModule: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '1240px', margin: '0 auto', fontFamily: 'inherit' }}>
+      {!isPatient ? (
+        <>
       {/* HEADER SECTION */}
       <div
         style={{
@@ -2319,7 +2388,366 @@ export const PrescriptionModule: React.FC = () => {
         </div>
       )}
 
-      {/* ==========================================================
+              </>
+      ) : (
+        /* ==========================================================
+           PATIENT VIEW: WHAT EXERCISES JOHN DOE NEEDS TO DO
+        ========================================================== */
+        <div>
+          {/* PATIENT PORTAL HEADER */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              borderRadius: '12px',
+              padding: '1.75rem 2rem',
+              color: 'white',
+              marginBottom: '2rem',
+              boxShadow: '0 10px 15px -3px rgba(2, 132, 199, 0.2)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                <span
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Module 2 • Patient Recovery Portal
+                </span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                  My Prescribed Rehabilitation Regimen
+                </span>
+              </div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
+                Welcome back, {currentUser?.full_name || 'John Doe'}!
+              </h2>
+              <p style={{ margin: '0.35rem 0 0', opacity: 0.9, fontSize: '0.95rem', maxWidth: '650px' }}>
+                Here are your active clinical rehabilitation protocols and daily exercises prescribed by Dr. Sarah Chen, MD.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {onNavigateToLibrary && (
+                <button
+                  onClick={onNavigateToLibrary}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '8px',
+                    padding: '0.7rem 1.2rem',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  📚 Exercise Library (Module 3)
+                </button>
+              )}
+
+              {patientActivePlanDetail && (
+                <button
+                  onClick={() => handleOpenPrint(patientActivePlanDetail)}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    color: '#0284c7',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.7rem 1.2rem',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  🖨️ Take-Home Sheet
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ACTIVE PROTOCOL SUMMARY BANNER */}
+          {patientActivePlanDetail ? (
+            <div style={{ display: 'grid', gap: '1.75rem' }}>
+              <div
+                style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: '12px',
+                  border: '2px solid #bae6fd',
+                  padding: '1.5rem 1.75rem',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+                        {patientActivePlanDetail.title}
+                      </span>
+                      <span
+                        style={{
+                          backgroundColor: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #bbf7d0',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        ● Active Protocol
+                      </span>
+                    </div>
+                    <div style={{ color: '#475569', fontSize: '0.9rem', marginTop: '0.4rem' }}>
+                      🩺 Prescribing Doctor: <strong>{patientActivePlanDetail.doctor_name || 'Dr. Sarah Chen, MD'}</strong> • Clinical Diagnosis: <strong>{patientActivePlanDetail.patient_diagnosis || 'Post-Op Right ACL Reconstruction'}</strong>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      backgroundColor: '#f0f9ff',
+                      border: '1px solid #e0f2fe',
+                      borderRadius: '8px',
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.85rem',
+                      color: '#0369a1',
+                      fontWeight: 600,
+                    }}
+                  >
+                    📅 Protocol Duration: {patientActivePlanDetail.start_date} → {patientActivePlanDetail.end_date || 'Until Clinical Discharge'}
+                  </div>
+                </div>
+              </div>
+
+              {/* WHAT EXERCISES JOHN DOE NEEDS TO DO */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                      📋 Exercises You Need To Do Today:
+                    </h3>
+                    <p style={{ margin: '0.35rem 0 0', color: '#64748b', fontSize: '0.9rem' }}>
+                      Complete each prescribed movement according to your doctor\'s clinical parameters below.
+                    </p>
+                  </div>
+                  <span
+                    style={{
+                      backgroundColor: '#e0f2fe',
+                      color: '#0369a1',
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {(patientActivePlanDetail.exercises && patientActivePlanDetail.exercises.length) || 0} Prescribed Exercises
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gap: '1.25rem' }}>
+                  {patientActivePlanDetail.exercises?.map((ex, idx) => {
+                    const isDone = !!completedToday[ex.id || idx];
+
+                    return (
+                      <div
+                        key={ex.id || idx}
+                        style={{
+                          backgroundColor: isDone ? '#f0fdf4' : '#ffffff',
+                          borderRadius: '12px',
+                          border: isDone ? '2px solid #86efac' : '1px solid #e2e8f0',
+                          padding: '1.5rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                                {idx + 1}. {ex.exercise_name || ('Exercise #' + ex.exercise_id)}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  backgroundColor: '#e0f2fe',
+                                  color: '#0369a1',
+                                }}
+                              >
+                                {ex.target_body_part || 'Knee / Mobility'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Completion Toggle */}
+                          <button
+                            onClick={() =>
+                              setCompletedToday(prev => ({
+                                ...prev,
+                                [ex.id || idx]: !prev[ex.id || idx],
+                              }))
+                            }
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              border: isDone ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                              backgroundColor: isDone ? '#16a34a' : '#ffffff',
+                              color: isDone ? '#ffffff' : '#475569',
+                              fontWeight: 700,
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                            }}
+                          >
+                            {isDone ? '✓ Completed Today' : '○ Mark as Done'}
+                          </button>
+                        </div>
+
+                        {/* Prescribed Dosage Parameters */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: '0.75rem',
+                            marginBottom: '1rem',
+                          }}
+                        >
+                          <div style={{ backgroundColor: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>TARGET SETS</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0284c7' }}>{ex.sets} Sets</div>
+                          </div>
+
+                          <div style={{ backgroundColor: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>REPS / SET</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0284c7' }}>{ex.reps} Reps</div>
+                          </div>
+
+                          <div style={{ backgroundColor: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>ISOMETRIC HOLD</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0284c7' }}>
+                              {ex.hold_seconds ? (ex.hold_seconds + ' Seconds') : 'Dynamic Movement'}
+                            </div>
+                          </div>
+
+                          <div style={{ backgroundColor: '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>DAILY CADENCE</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0284c7' }}>
+                              {ex.daily_frequency ? (ex.daily_frequency + 'x Daily') : '1x Daily'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Safety Precaution */}
+                        {ex.safety_notes && (
+                          <div
+                            style={{
+                              backgroundColor: '#fffbeb',
+                              border: '1px solid #fef3c7',
+                              borderRadius: '8px',
+                              padding: '0.75rem 1rem',
+                              color: '#92400e',
+                              fontSize: '0.85rem',
+                              marginBottom: '1rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <span>🛡️</span>
+                            <span><strong>Doctor\'s Safety Guidance:</strong> {ex.safety_notes}</span>
+                          </div>
+                        )}
+
+                        {/* Action Navigation Buttons */}
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          {onNavigateToLibrary && (
+                            <button
+                              onClick={onNavigateToLibrary}
+                              style={{
+                                padding: '0.6rem 1rem',
+                                borderRadius: '6px',
+                                border: '1px solid #0284c7',
+                                backgroundColor: '#f0f9ff',
+                                color: '#0284c7',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                              }}
+                            >
+                              📹 Watch Tutorial Guide (Module 3)
+                            </button>
+                          )}
+
+                          {onNavigateToGame && (
+                            <button
+                              onClick={onNavigateToGame}
+                              style={{
+                                padding: '0.6rem 1.1rem',
+                                borderRadius: '6px',
+                                border: 'none',
+                                backgroundColor: '#0284c7',
+                                color: '#ffffff',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                              }}
+                            >
+                              🎮 Start in Rehab Engine (Module 4)
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '3rem',
+                textAlign: 'center',
+                backgroundColor: '#f8fafc',
+                borderRadius: '12px',
+                border: '1px dashed #cbd5e1',
+              }}
+            >
+              <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '0 0 1rem' }}>
+                Loading your personalized prescription regimen...
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+{/* ==========================================================
           POINT 3: PRINTABLE PATIENT TAKE-HOME SHEET MODAL
       ========================================================== */}
       {printPlan && (

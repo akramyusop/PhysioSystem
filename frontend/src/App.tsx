@@ -17,7 +17,7 @@ export const App: React.FC = () => {
     avatar_url: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150',
   });
 
-  const [activeTab, setActiveTab] = useState<'prescription' | 'library' | 'game' | 'logger' | 'analytics'>('game');
+  const [activeTab, setActiveTab] = useState<'prescription' | 'library' | 'game' | 'logger' | 'analytics'>('prescription');
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -26,9 +26,9 @@ export const App: React.FC = () => {
   const handleLoginSuccess = (user: AuthUser) => {
     setCurrentUser(user);
     if (user.role === 'patient') {
-      setActiveTab('game'); // Patients land directly on their Rehab Game or Video Library
+      setActiveTab('prescription'); // Patients start on their prescribed recovery plan!
     } else {
-      setActiveTab('prescription'); // Doctors land on Prescriptions or Analytics
+      setActiveTab('prescription'); // Doctors land on Prescriptions workspace
     }
   };
 
@@ -70,23 +70,20 @@ export const App: React.FC = () => {
           <span>PhysioSystem</span>
         </div>
 
-        {/* Dynamic Navigation Tabs (Module 1 is NOT here - it's the login screen!) */}
+        {/* Dynamic Navigation Tabs */}
         <nav className="nav-tabs">
-          {/* Only doctors can prescribe treatment plans */}
-          {isDoctor && (
-            <button
-              className={`nav-tab-btn ${activeTab === 'prescription' ? 'active' : ''}`}
-              onClick={() => setActiveTab('prescription')}
-            >
-              📋 Prescriptions
-            </button>
-          )}
+          <button
+            className={`nav-tab-btn ${activeTab === 'prescription' ? 'active' : ''}`}
+            onClick={() => setActiveTab('prescription')}
+          >
+            {isPatient ? '📋 My Prescribed Regimen' : '📋 Prescriptions'}
+          </button>
 
           <button
             className={`nav-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
             onClick={() => setActiveTab('library')}
           >
-            {isPatient ? '📹 My Exercise Guides' : '📚 Exercise Library'}
+            📚 Exercise Library
           </button>
 
           <button
@@ -164,8 +161,20 @@ export const App: React.FC = () => {
 
       {/* Main Workspace content */}
       <main className="main-content">
-        {activeTab === 'prescription' && isDoctor && <PrescriptionModule />}
-        {activeTab === 'library' && <LibraryModule />}
+        {activeTab === 'prescription' && (
+          <PrescriptionModule
+            currentUser={currentUser}
+            onNavigateToLibrary={() => setActiveTab('library')}
+            onNavigateToGame={() => setActiveTab('game')}
+          />
+        )}
+        {activeTab === 'library' && (
+          <LibraryModule
+            currentUser={currentUser}
+            onNavigateToGame={() => setActiveTab('game')}
+            onNavigateToPrescription={() => setActiveTab('prescription')}
+          />
+        )}
         {activeTab === 'game' && <GameModule currentUser={currentUser} />}
         {activeTab === 'logger' && <LoggerModule />}
         {activeTab === 'analytics' && <AnalyticsModule />}

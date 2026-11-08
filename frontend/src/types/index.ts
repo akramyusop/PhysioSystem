@@ -160,6 +160,10 @@ export interface Exercise {
   target_body_part: string;
   difficulty: 'easy' | 'medium' | 'hard';
   recommended_frequency?: string;
+  media_url?: string | null;
+  media_type?: 'video' | 'image' | 'diagram' | null;
+  media_title?: string | null;
+  thumbnail_url?: string | null;
 }
 
 export interface MediaAsset {

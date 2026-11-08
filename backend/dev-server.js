@@ -419,7 +419,21 @@ const server = http.createServer(async (req, res) => {
     // MODULE 3: EXERCISE LIBRARY
     // ==========================================
     if (url === '/api/library/exercises' && req.method === 'GET') {
-      const data = db.prepare('SELECT id, name, description, target_body_part, difficulty, recommended_frequency FROM exercises').all();
+      const data = db.prepare(`
+        SELECT 
+          e.id, 
+          e.name, 
+          e.description, 
+          e.target_body_part, 
+          e.difficulty, 
+          e.recommended_frequency,
+          m.url AS media_url,
+          m.asset_type AS media_type,
+          m.title AS media_title,
+          m.thumbnail_url
+        FROM exercises e
+        LEFT JOIN media_assets m ON e.id = m.exercise_id
+      `).all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
       return;
     }
