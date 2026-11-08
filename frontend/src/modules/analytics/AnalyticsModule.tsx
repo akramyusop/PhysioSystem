@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api/client';
 import { AuthUser, PatientRecoverySummary, PatientTrendData } from '../../types';
 
@@ -39,7 +39,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
           setSelectedPatientId(res[0].patient_profile_id);
         }
       } else {
-        setSummaries([
+        const fallback: PatientRecoverySummary[] = [
           {
             patient_profile_id: 1,
             patient_name: 'John Doe',
@@ -56,7 +56,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
           {
             patient_profile_id: 2,
             patient_name: 'Emily Rose',
-            injury_diagnosis: 'Frozen Shoulder - Left',
+            injury_diagnosis: 'Adhesive Capsulitis (Frozen Shoulder - Left)',
             baseline_rom_score: 45,
             total_sessions_logged: 4,
             average_pain_score: 5.4,
@@ -66,8 +66,35 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
             clinical_alert_count: 1,
             last_activity_date: '2026-11-03',
           },
-        ]);
-        setSelectedPatientId(1);
+          {
+            patient_profile_id: 3,
+            patient_name: 'Alex San',
+            injury_diagnosis: 'lower back lumbar strain',
+            baseline_rom_score: 60,
+            total_sessions_logged: 2,
+            average_pain_score: 4.0,
+            latest_pain_score: 4,
+            max_rom_achieved: 68,
+            adherence_rate_pct: 60,
+            clinical_alert_count: 0,
+            last_activity_date: '2026-11-04',
+          },
+          {
+            patient_profile_id: 4,
+            patient_name: 'Test Patient',
+            injury_diagnosis: 'Lumbar Disc Herniation',
+            baseline_rom_score: 65,
+            total_sessions_logged: 1,
+            average_pain_score: 3.0,
+            latest_pain_score: 3,
+            max_rom_achieved: 70,
+            adherence_rate_pct: 50,
+            clinical_alert_count: 0,
+            last_activity_date: '2026-11-05',
+          },
+        ];
+        setSummaries(fallback);
+        setSelectedPatientId(isPatient ? 1 : fallback[0].patient_profile_id);
       }
     } catch (err) {
       console.error('Failed to load recovery summaries:', err);
@@ -86,13 +113,15 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
       if (data) setTrendData(data);
     } catch (err) {
       console.warn('Fallback trend data:', err);
+      const currentSum = summaries.find(s => s.patient_profile_id === patientId);
       const isJohn = patientId === 1;
+      const isEmily = patientId === 2;
       setTrendData({
         patient_info: {
           id: patientId,
-          name: isJohn ? 'John Doe' : 'Emily Rose',
-          diagnosis: isJohn ? 'Post-Op Right ACL Reconstruction' : 'Frozen Shoulder',
-          baseline_rom: isJohn ? 85 : 45,
+          name: currentSum?.patient_name || (isJohn ? 'John Doe' : isEmily ? 'Emily Rose' : 'Patient #' + patientId),
+          diagnosis: currentSum?.injury_diagnosis || 'Post-Op Rehabilitation',
+          baseline_rom: currentSum?.baseline_rom_score || (isJohn ? 85 : isEmily ? 45 : 60),
           doctor_name: 'Dr. Sarah Chen, MD',
           start_date: '2026-10-15',
         },
@@ -105,11 +134,16 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               { date: '2026-11-02', rom_angle: 95, target_angle: 110, exercise_name: 'Quad Set Isometric', source: 'nurse' },
               { date: '2026-11-06', rom_angle: 98, target_angle: 110, exercise_name: 'Neural Hold Stabilizer', source: 'game' },
             ]
-          : [
+          : isEmily
+          ? [
               { date: '2026-10-20', rom_angle: 45, target_angle: 140, exercise_name: 'Intake Mobility Exam', source: 'nurse' },
               { date: '2026-10-26', rom_angle: 48, target_angle: 140, exercise_name: 'Shoulder Pendulum', source: 'self' },
               { date: '2026-11-01', rom_angle: 52, target_angle: 140, exercise_name: 'Pendulum Orbit Catcher', source: 'game' },
               { date: '2026-11-03', rom_angle: 55, target_angle: 140, exercise_name: 'Wall Angels Guided', source: 'nurse' },
+            ]
+          : [
+              { date: '2026-10-28', rom_angle: 60, target_angle: 90, exercise_name: 'Initial Lumbar Baseline', source: 'nurse' },
+              { date: '2026-11-04', rom_angle: 68, target_angle: 90, exercise_name: 'Pelvic Tilt & Core Hold', source: 'self' },
             ],
         pain_trend: isJohn
           ? [
@@ -118,18 +152,34 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               { date: '2026-10-29', pain_score: 3, source: 'Nurse Davis', notes: 'Tolerating flexion smoothly' },
               { date: '2026-11-06', pain_score: 2, source: 'Nurse Davis', notes: 'Mild soreness only after sets' },
             ]
-          : [
+          : isEmily
+          ? [
               { date: '2026-10-20', pain_score: 7, source: 'Intake Assessment', notes: 'Capsular stiffness' },
               { date: '2026-10-28', pain_score: 6, source: 'Nurse Jenkins', notes: 'Pendulum tolerated' },
               { date: '2026-11-03', pain_score: 5, source: 'Nurse Jenkins', notes: 'Abduction triggers pinching' },
+            ]
+          : [
+              { date: '2026-10-28', pain_score: 5, source: 'Intake Assessment', notes: 'Lower back stiffness' },
+              { date: '2026-11-04', pain_score: 4, source: 'Nurse Davis', notes: 'Core engagement tolerated' },
             ],
         adherence: {
-          prescribed_sessions: isJohn ? 21 : 14,
-          completed_sessions: isJohn ? 18 : 10,
-          compliance_pct: isJohn ? 86 : 71,
-          streak_days: isJohn ? 5 : 2,
+          prescribed_sessions: isJohn ? 21 : isEmily ? 14 : 10,
+          completed_sessions: isJohn ? 18 : isEmily ? 10 : 6,
+          compliance_pct: isJohn ? 86 : isEmily ? 71 : 60,
+          streak_days: isJohn ? 5 : isEmily ? 2 : 1,
         },
-        clinical_alerts: isJohn
+        clinical_alerts: isEmily
+          ? [
+              {
+                id: 'alt-2-1',
+                date: '2026-11-03',
+                patient_name: 'Emily Rose',
+                severity: 'moderate',
+                alert_type: 'Pain Spike',
+                message: 'Patient Emily Rose reported elevated pain (5/10) during shoulder abduction at 55 deg. Cold therapy administered.',
+              },
+            ]
+          : isJohn
           ? [
               {
                 id: 'alt-1-1',
@@ -137,19 +187,10 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 patient_name: 'John Doe',
                 severity: 'low',
                 alert_type: 'Milestone Achieved',
-                message: 'ROM reached 98 deg (+13 deg over baseline). Approved to advance to Phase 2 resistance band loading.',
+                message: 'ROM reached 98 deg (+13 deg over baseline). Approved to advance to Phase 2 strengthening.',
               },
             ]
-          : [
-              {
-                id: 'alt-2-1',
-                date: '2026-11-03',
-                patient_name: 'Emily Rose',
-                severity: 'moderate',
-                alert_type: 'Pain Spike',
-                message: 'Patient Emily Rose reported elevated pain (5/10) during shoulder abduction at 55 deg. Cold pack applied.',
-              },
-            ],
+          : [],
       });
     }
   };
@@ -159,7 +200,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
   }, [summaries, selectedPatientId]);
 
   const clinicKpis = useMemo(() => {
-    if (summaries.length === 0) return { totalPatients: 0, avgPain: '0.0', avgAdherence: 0, alertCount: 0 };
+    if (summaries.length === 0) return { totalPatients: 4, avgPain: '3.8', avgAdherence: 68, alertCount: 1 };
     const totalPatients = summaries.length;
     const painSum = summaries.reduce((acc, s) => acc + (s.average_pain_score || 0), 0);
     const avgPain = (painSum / totalPatients).toFixed(1);
@@ -277,7 +318,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
 
   return (
     <div style={{ maxWidth: '1240px', margin: '0 auto', paddingBottom: '3rem' }}>
-      {/* Module Title Banner */}
+      {/* Header Banner */}
       <div
         style={{
           background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
@@ -309,7 +350,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               MODULE 6 &bull; ANALYTICS & RECOVERY
             </span>
             <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-              {isPatient ? 'Personal Patient Portal' : 'Clinical Triage & Telemetry Suite'}
+              {isPatient ? 'Personal Patient Portal' : 'Clinician Telemetry & Population Overview'}
             </span>
           </div>
           <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>
@@ -317,280 +358,68 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
           </h2>
           <p style={{ margin: '0.35rem 0 0', opacity: 0.9, fontSize: '0.92rem', maxWidth: '640px' }}>
             {isPatient
-              ? 'Track your joint range-of-motion milestones, pain reduction timeline, and rehab game compliance.'
-              : 'Population recovery monitoring, Range of Motion (ROM) progression curves, and clinical safety alerts.'}
+              ? 'View your joint Range of Motion progress, pain reduction trajectory, and home exercise adherence.'
+              : 'Monitor cohort recovery trends, joint mobility curves, and safety flags across all patients.'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={handleExportCSV}
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              color: '#ffffff',
-              padding: '0.6rem 1.1rem',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'background 0.2s',
-            }}
-            title="Download complete telemetry data in CSV format"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export CSV
-          </button>
+        {!isPatient && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleExportCSV}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                color: '#ffffff',
+                padding: '0.6rem 1.1rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+              title="Download telemetry data in CSV format"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export CSV
+            </button>
 
-          <button
-            onClick={() => setShowPrintModal(true)}
-            style={{
-              background: '#ffffff',
-              color: '#0369a1',
-              border: 'none',
-              padding: '0.6rem 1.15rem',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-            }}
-            title="Open printable medical summary"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg>
-            Clinical Summary
-          </button>
-        </div>
+            <button
+              onClick={() => setShowPrintModal(true)}
+              style={{
+                background: '#ffffff',
+                color: '#0369a1',
+                border: 'none',
+                padding: '0.6rem 1.15rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              }}
+              title="Open printable medical summary"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              Clinical Summary
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 4-Phase Clinical Recovery Progression Stepper */}
-      <div
-        className="card"
-        style={{
-          padding: '1.25rem 1.5rem',
-          marginBottom: '1.5rem',
-          background: '#ffffff',
-          borderRadius: '10px',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
-              Clinical Pathway & Protocol Stepper
-            </h4>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
-              Standard Evidence-Based ACL / Musculoskeletal Rehabilitation Trajectory
-            </div>
-          </div>
-          <span
-            style={{
-              background: '#dcfce7',
-              color: '#166534',
-              padding: '0.25rem 0.65rem',
-              borderRadius: '999px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-            }}
-          >
-            Phase 2 Active (88% Milestones Met)
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '1rem',
-          }}
-        >
-          {/* Phase 1 */}
-          <div
-            style={{
-              padding: '0.85rem',
-              borderRadius: '8px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
-                Phase 1 &bull; Completed
-              </span>
-              <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.9rem' }}>&check;</span>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>Acute Protection & Pain Control</div>
-            <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '0.2rem' }}>Swelling controlled, cryotherapy routine</div>
-          </div>
-
-          {/* Phase 2 */}
-          <div
-            style={{
-              padding: '0.85rem',
-              borderRadius: '8px',
-              background: '#eff6ff',
-              border: '2px solid #0284c7',
-              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.1)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase' }}>
-                Phase 2 &bull; Current Stage
-              </span>
-              <span style={{ background: '#0284c7', color: '#ffffff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>2</span>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>Active ROM & Mobility</div>
-            <div style={{ fontSize: '0.78rem', color: '#0369a1', marginTop: '0.2rem' }}>Joint angle: 98 deg (+13 deg gain), pain &le; 2/10</div>
-          </div>
-
-          {/* Phase 3 */}
-          <div
-            style={{
-              padding: '0.85rem',
-              borderRadius: '8px',
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Phase 3 &bull; Upcoming
-              </span>
-              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>3</span>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#475569' }}>Progressive Resistance Loading</div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>Eccentric quads, resistance band rows</div>
-          </div>
-
-          {/* Phase 4 */}
-          <div
-            style={{
-              padding: '0.85rem',
-              borderRadius: '8px',
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                Phase 4 &bull; Target
-              </span>
-              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>4</span>
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#475569' }}>Discharge & Return to Activity</div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>Target ROM: 110 deg (12 deg remaining)</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Day 1 vs Today Before/After Comparison Card */}
-      <div
-        className="card"
-        style={{
-          padding: '1.25rem 1.5rem',
-          marginBottom: '1.5rem',
-          background: 'linear-gradient(to right, #f8fafc 0%, #f0f9ff 100%)',
-          borderLeft: '5px solid #0284c7',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: 800 }}>
-              Before vs. Today: Individual Recovery Trajectory
-            </h4>
-            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-              Patient: <strong>{trendData?.patient_info.name || selectedSummary?.patient_name}</strong> &bull; Diagnosis: {trendData?.patient_info.diagnosis || selectedSummary?.injury_diagnosis}
-            </div>
-          </div>
-          <div style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 700 }}>
-            Intake: {trendData?.patient_info.start_date || '2026-10-15'} &bull; Latest: {selectedSummary?.last_activity_date || '2026-11-06'}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          {/* ROM Metric Comparison */}
-          <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Joint Range of Motion</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.1rem', color: '#94a3b8', textDecoration: 'line-through' }}>
-                {trendData?.patient_info.baseline_rom || selectedSummary?.baseline_rom_score || 85}&deg;
-              </span>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>
-                {selectedSummary?.max_rom_achieved || 98}&deg;
-              </span>
-              <span style={{ background: '#dcfce7', color: '#166534', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 700 }}>
-                +{romGain}&deg; Gain
-              </span>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.25rem' }}>
-              +15.3% improvement from intake
-            </div>
-          </div>
-
-          {/* Pain Reduction Comparison */}
-          <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Pain Level (0-10 Scale)</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.1rem', color: '#ef4444', textDecoration: 'line-through' }}>
-                6.0/10
-              </span>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981' }}>
-                {selectedSummary?.latest_pain_score ?? 2}/10
-              </span>
-              <span style={{ background: '#dcfce7', color: '#166534', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 700 }}>
-                -66% Pain Relief
-              </span>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.25rem' }}>
-              Reduced from Acute to Mild soreness
-            </div>
-          </div>
-
-          {/* Adherence Rate */}
-          <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Rehab Adherence & Streak</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#6366f1' }}>
-                {trendData?.adherence.compliance_pct || selectedSummary?.adherence_rate_pct || 88}%
-              </span>
-              <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '0.15rem 0.45rem', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 700 }}>
-                {trendData?.adherence.streak_days || 5} Day Streak
-              </span>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-              {trendData?.adherence.completed_sessions || 18} of {trendData?.adherence.prescribed_sessions || 21} sessions done
-            </div>
-          </div>
-
-          {/* Clinical Clearance Status */}
-          <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Clinical Clearance</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
-                Tolerating Rehab
-              </span>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.45rem', fontWeight: 600 }}>
-              Cleared for Phase 2 progressive resistance
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Clinical & Population KPI Row */}
+      {/* Top KPI Row */}
       <div
         style={{
           display: 'grid',
@@ -601,13 +430,13 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
       >
         <div className="card" style={{ padding: '1.1rem', borderLeft: '4px solid #0284c7' }}>
           <div style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>
-            {isPatient ? 'Current ROM Gain' : 'Active Cohort Monitored'}
+            {isPatient ? 'My ROM Improvement' : 'Active Patients Monitored'}
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0' }}>
             {isPatient ? `+${romGain} deg` : `${clinicKpis.totalPatients} Patients`}
           </div>
           <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500 }}>
-            {isPatient ? 'Improvement above intake baseline' : '100% telemetry synced via SQLite'}
+            {isPatient ? 'Gained over intake baseline' : 'Active in SQLite database'}
           </div>
         </div>
 
@@ -619,39 +448,39 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
             {isPatient ? `${selectedSummary?.latest_pain_score ?? 2}/10` : `${clinicKpis.avgPain}/10`}
           </div>
           <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500 }}>
-            {isPatient ? 'Down from 6/10 at intake (-66%)' : 'Trending down over last 14 days'}
+            {isPatient ? 'Down from 6/10 at intake (-66%)' : 'Across all monitored patients'}
           </div>
         </div>
 
         <div className="card" style={{ padding: '1.1rem', borderLeft: '4px solid #8b5cf6' }}>
           <div style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>
-            {isPatient ? 'Session Adherence Streak' : 'Cohort Rehab Compliance'}
+            {isPatient ? 'Session Adherence Streak' : 'Rehab Compliance Rate'}
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: '0.25rem 0' }}>
             {isPatient ? `${trendData?.adherence.streak_days || 5} Days Active` : `${clinicKpis.avgAdherence}%`}
           </div>
           <div style={{ fontSize: '0.82rem', color: '#6366f1', fontWeight: 500 }}>
             {isPatient
-              ? `${trendData?.adherence.completed_sessions} of ${trendData?.adherence.prescribed_sessions} sessions completed`
+              ? `${trendData?.adherence.completed_sessions || 18} of ${trendData?.adherence.prescribed_sessions || 21} sessions completed`
               : 'Target benchmark >= 80%'}
           </div>
         </div>
 
         <div className="card" style={{ padding: '1.1rem', borderLeft: '4px solid #f59e0b' }}>
           <div style={{ color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 600 }}>
-            {isPatient ? 'Current Stage' : 'Active Clinical Alerts'}
+            {isPatient ? 'Recovery Status' : 'Clinical Safety Flags'}
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: activeAlerts.length > 0 ? '#b45309' : '#0f172a', margin: '0.25rem 0' }}>
-            {isPatient ? 'Phase 2 Rehab' : `${activeAlerts.length} Active`}
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: !isPatient && activeAlerts.length > 0 ? '#b45309' : '#0f172a', margin: '0.25rem 0' }}>
+            {isPatient ? 'On Track' : `${activeAlerts.length} Active`}
           </div>
-          <div style={{ fontSize: '0.82rem', color: activeAlerts.length > 0 ? '#b45309' : '#16a34a', fontWeight: 500 }}>
-            {isPatient ? 'Sub-acute mobility & strengthening' : 'NEWS2 & high-pain flagged'}
+          <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 500 }}>
+            {isPatient ? 'Phase 2 strengthening active' : 'High pain or vitals elevation'}
           </div>
         </div>
       </div>
 
-      {/* Automated Clinical Alert Notification Banner */}
-      {activeAlerts.length > 0 && (
+      {/* Automated Clinical Alert Notification Banner (Doctor View Only) */}
+      {!isPatient && activeAlerts.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           {activeAlerts.map(alert => (
             <div
@@ -744,7 +573,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
         </div>
       )}
 
-      {/* Patient Selection Bar (Doctor/Nurse Only) */}
+      {/* Patient Selection Dropdown (Doctor View Only) */}
       {!isPatient && (
         <div
           className="card"
@@ -785,13 +614,13 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.85rem' }}>
             <span style={{ color: '#64748b' }}>
-              Baseline ROM: <strong>{selectedSummary?.baseline_rom_score ?? 85}&deg;</strong>
+              Baseline ROM: <strong>{selectedSummary?.baseline_rom_score ?? 60}&deg;</strong>
             </span>
             <span style={{ color: '#64748b' }}>
-              Max Achieved: <strong style={{ color: '#16a34a' }}>{selectedSummary?.max_rom_achieved ?? 98}&deg;</strong>
+              Max Achieved: <strong style={{ color: '#16a34a' }}>{selectedSummary?.max_rom_achieved ?? 60}&deg;</strong>
             </span>
             <span style={{ color: '#64748b' }}>
-              Adherence: <strong>{selectedSummary?.adherence_rate_pct ?? 88}%</strong>
+              Adherence: <strong>{selectedSummary?.adherence_rate_pct ?? 70}%</strong>
             </span>
           </div>
         </div>
@@ -805,7 +634,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
             <div>
               <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>Range of Motion (ROM) Trajectory</h3>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                Intake baseline vs real-time measured joint angle over sessions (Degrees &deg;)
+                Intake baseline vs measured joint flexion angle (Degrees &deg;)
               </p>
             </div>
             <div style={{ display: 'flex', gap: '0.8rem', fontSize: '0.75rem', alignItems: 'center' }}>
@@ -1038,18 +867,19 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
         </div>
       </div>
 
-      {/* Cohort Recovery Matrix (Clinician View) or Milestone Checklist (Patient View) */}
+      {/* Role-Specific Bottom Section */}
       {!isPatient ? (
+        /* Doctor View: Complete 4-Patient Cohort Triage Table */
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Cohort Triage & Telemetry Matrix</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Cohort Triage & Patient Matrix</h3>
               <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                SQLite live aggregates from <code>view_patient_recovery_summary</code>, <code>activity_logs</code>, and <code>vital_notes</code>
+                Live patient registry from SQLite database (Click any row to inspect telemetry)
               </p>
             </div>
             <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 600 }}>
-              {summaries.length} Patients Active
+              {summaries.length} Patients Total
             </span>
           </div>
 
@@ -1064,7 +894,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                   <th style={{ padding: '0.75rem' }}>Avg Pain</th>
                   <th style={{ padding: '0.75rem' }}>Adherence</th>
                   <th style={{ padding: '0.75rem' }}>Sessions</th>
-                  <th style={{ padding: '0.75rem' }}>Alerts</th>
+                  <th style={{ padding: '0.75rem' }}>Safety Flags</th>
                   <th style={{ padding: '0.75rem', textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
@@ -1088,10 +918,10 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                         {s.injury_diagnosis}
                       </td>
                       <td style={{ padding: '0.75rem' }}>
-                        {s.baseline_rom_score ?? 85}&deg;
+                        {s.baseline_rom_score ?? 60}&deg;
                       </td>
                       <td style={{ padding: '0.75rem', fontWeight: 700, color: '#16a34a' }}>
-                        {s.max_rom_achieved ?? 0}&deg;
+                        {s.max_rom_achieved ?? 60}&deg;
                       </td>
                       <td style={{ padding: '0.75rem' }}>
                         <span
@@ -1104,7 +934,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                             color: (s.average_pain_score || 0) <= 3 ? '#166534' : (s.average_pain_score || 0) <= 6 ? '#92400e' : '#991b1b',
                           }}
                         >
-                          {s.average_pain_score ?? 0}/10
+                          {s.average_pain_score ?? 3}/10
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem' }}>
@@ -1112,13 +942,13 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                           <div style={{ width: '60px', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                             <div
                               style={{
-                                width: `${s.adherence_rate_pct ?? 75}%`,
+                                width: `${s.adherence_rate_pct ?? 70}%`,
                                 height: '100%',
                                 background: (s.adherence_rate_pct || 0) >= 80 ? '#10b981' : '#f59e0b',
                               }}
                             />
                           </div>
-                          <span>{s.adherence_rate_pct ?? 75}%</span>
+                          <span>{s.adherence_rate_pct ?? 70}%</span>
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem' }}>
@@ -1159,12 +989,12 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
           </div>
         </div>
       ) : (
-        /* Patient Milestone & Guidance Card */
+        /* Patient View: Personal Milestones & Game Action */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Recovery Milestones</h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>My Recovery Milestones</h3>
             <p style={{ margin: '0.2rem 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
-              Your rehabilitation achievements tracked against clinical protocol
+              Your rehabilitation progress tracked against your doctor treatment plan
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1172,7 +1002,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 <span style={{ color: '#16a34a', fontWeight: 800 }}>&check;</span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Intake Mobility Exam Complete</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Baseline angle recorded at 85&deg;</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Baseline angle recorded at {trendData?.patient_info.baseline_rom || 85}&deg;</div>
                 </div>
               </div>
 
@@ -1180,7 +1010,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 <span style={{ color: '#16a34a', fontWeight: 800 }}>&check;</span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Pain Down to Mild (2/10)</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Reduced swelling, cold therapy successful</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Swelling controlled, significant relief achieved</div>
                 </div>
               </div>
 
@@ -1188,32 +1018,32 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 <span style={{ color: '#0284c7', fontWeight: 800 }}>&bull;</span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Pass 95&deg; Range of Motion</div>
-                  <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 600 }}>Achieved! Max recorded at 98&deg; (+13&deg;)</div>
+                  <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 600 }}>Achieved! Max recorded at {selectedSummary?.max_rom_achieved || 98}&deg; (+{romGain}&deg;)</div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem', background: '#f8fafc', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
                 <span style={{ color: '#94a3b8' }}>&bull;</span>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#64748b' }}>Target 110&deg; Flexion (Phase 3 Discharge)</div>
-                  <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>12&deg; remaining to complete functional discharge</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#64748b' }}>Target 110&deg; Full Flexion</div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>12&deg; remaining to complete recovery</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="card">
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Next Recommended Step</h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>Next Recommended Exercise</h3>
             <p style={{ margin: '0.2rem 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
-              Keep your streak alive to maximize joint remodeling
+              Maintain your daily streak to keep joint mobility flexible
             </p>
 
             <div style={{ padding: '1rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', marginBottom: '1rem' }}>
               <div style={{ fontWeight: 700, color: '#0369a1', marginBottom: '0.3rem' }}>
-                Fruit Reach & Balance Game
+                Fruit Reach & Balance Rehab Game
               </div>
               <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: 1.5 }}>
-                Your webcam will track knee flexion and trunk extension. Complete 3 sets to log today's session.
+                Your webcam will track joint angles in real time. Complete 3 sets today to maintain your streak.
               </div>
             </div>
 
@@ -1239,7 +1069,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
-                Start Today's Rehab Session
+                Start Today&apos;s Rehab Session
               </button>
             )}
           </div>
