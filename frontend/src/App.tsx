@@ -168,13 +168,7 @@ export const App: React.FC = () => {
             onNavigateToGame={() => setActiveTab('game')}
           />
         )}
-        {activeTab === 'library' && (
-          <LibraryModule
-            currentUser={currentUser}
-            onNavigateToGame={() => setActiveTab('game')}
-            onNavigateToPrescription={() => setActiveTab('prescription')}
-          />
-        )}
+        {activeTab === 'library' && <LibraryModule currentUser={currentUser} />}
         {activeTab === 'game' && <GameModule currentUser={currentUser} />}
         {activeTab === 'logger' && <LoggerModule />}
         {activeTab === 'analytics' && <AnalyticsModule />}

@@ -1,4 +1,4 @@
-﻿-- 002_seed.sql: Realistic Seed Data for all 6 modules
+-- 002_seed.sql: Realistic Seed Data for all 6 modules
 -- Enables team members 2, 4, 5, and 6 to develop and test immediately
 
 -- 1. USERS (Doctor, Nurse, Patients)
@@ -21,9 +21,10 @@ INSERT OR IGNORE INTO exercises (id, name, description, target_body_part, diffic
 (4, 'Wall Angels', 'Stand with back and elbows against the wall, slide arms upward maintaining contact.', 'Upper Back & Shoulder', 'medium', '1x daily');
 
 INSERT OR IGNORE INTO media_assets (id, exercise_id, asset_type, url, title, thumbnail_url) VALUES
-(1, 1, 'video', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', 'Isometric Quad Tutorial', 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400'),
-(2, 2, 'video', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', 'Heel Slide Range of Motion', 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400'),
-(3, 3, 'diagram', 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=600', 'Shoulder Pendulum Arc Diagram', 'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=400');
+(1, 1, 'video', 'https://youtu.be/HscSsKwohoQ?si=RZ5ayjgvD13cVYp1', 'Quadriceps Isometrics Clinic Tutorial', 'https://img.youtube.com/vi/HscSsKwohoQ/hqdefault.jpg'),
+(2, 2, 'video', 'https://youtu.be/yxmPWykyov4?si=-rcCPlKPERoT3HVc', 'Heel Slides with Strap Tutorial', 'https://img.youtube.com/vi/yxmPWykyov4/hqdefault.jpg'),
+(3, 3, 'video', 'https://youtu.be/zY5nq68IxwA?si=lMe96uvUW6CcaDxf&t=20', 'Shoulder Pendulum Swing Tutorial', 'https://img.youtube.com/vi/zY5nq68IxwA/hqdefault.jpg'),
+(4, 4, 'video', 'https://youtu.be/Qlan0IApO7o?si=OjWqXDcMd_TWZ2FM', 'Wall Angels Posture Tutorial', 'https://img.youtube.com/vi/Qlan0IApO7o/hqdefault.jpg');
 
 -- 4. TREATMENT PLANS & PRESCRIBED EXERCISES
 INSERT OR IGNORE INTO treatment_plans (id, patient_id, doctor_id, title, status, start_date, end_date) VALUES

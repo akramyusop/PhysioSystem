@@ -416,8 +416,115 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ==========================================
-    // MODULE 3: EXERCISE LIBRARY
+    // MODULE 3: EXERCISE LIBRARY & PATIENT GUIDANCE
     // ==========================================
+    if (url === '/api/library/catalog' && req.method === 'GET') {
+      const exercises = db.prepare('SELECT id, name, description, target_body_part, difficulty, recommended_frequency FROM exercises ORDER BY id ASC').all();
+      const allMedia = db.prepare('SELECT id, exercise_id, asset_type, url, title, thumbnail_url FROM media_assets ORDER BY id ASC').all();
+      const catalog = exercises.map(ex => ({
+        ...ex,
+        media_assets: allMedia.filter(m => m.exercise_id === ex.id)
+      }));
+      res.end(JSON.stringify({ success: true, message: 'Full exercise catalog with media fetched successfully', data: catalog }));
+      return;
+    }
+
+    if (url === '/api/library/patients' && req.method === 'GET') {
+      const patients = db.prepare(`
+        SELECT 
+          p.id AS patient_id,
+          u.id AS user_id,
+          u.full_name,
+          p.injury_diagnosis,
+          p.baseline_rom_score,
+          p.notes
+        FROM patient_profiles p
+        JOIN users u ON p.user_id = u.id
+        ORDER BY p.id ASC
+      `).all();
+      res.end(JSON.stringify({ success: true, message: 'Patients fetched for guidance view', data: patients }));
+      return;
+    }
+
+    const guidanceMatch = url.match(/^\/api\/library\/guidance\/(\d+)$/);
+    if (guidanceMatch && req.method === 'GET') {
+      const patientId = Number(guidanceMatch[1]);
+      const patient = db.prepare(`
+        SELECT 
+          p.id AS patient_id,
+          u.id AS user_id,
+          u.full_name,
+          p.injury_diagnosis,
+          p.baseline_rom_score,
+          p.notes
+        FROM patient_profiles p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = ?
+      `).get(patientId);
+
+      if (!patient) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, message: 'Patient profile not found', data: null }));
+        return;
+      }
+
+      const rows = db.prepare(`
+        SELECT 
+          pe.id AS prescribed_id,
+          tp.id AS plan_id,
+          tp.title AS plan_title,
+          tp.status AS plan_status,
+          u.full_name AS doctor_name,
+          e.id AS exercise_id,
+          e.name AS exercise_name,
+          e.description,
+          e.target_body_part,
+          e.difficulty,
+          e.recommended_frequency,
+          pe.sets,
+          pe.reps,
+          pe.hold_seconds,
+          pe.daily_frequency,
+          pe.safety_notes,
+          pe.order_index
+        FROM prescribed_exercises pe
+        JOIN treatment_plans tp ON pe.plan_id = tp.id
+        JOIN users u ON tp.doctor_id = u.id
+        JOIN exercises e ON pe.exercise_id = e.id
+        WHERE tp.patient_id = ? AND tp.status = 'active'
+        ORDER BY pe.order_index ASC, pe.id ASC
+      `).all(patientId);
+
+      const allMedia = db.prepare('SELECT id, exercise_id, asset_type, url, title, thumbnail_url FROM media_assets ORDER BY id ASC').all();
+
+      const items = rows.map(r => ({
+        prescribed_id: r.prescribed_id,
+        plan_id: r.plan_id,
+        plan_title: r.plan_title,
+        doctor_name: r.doctor_name,
+        exercise_id: r.exercise_id,
+        exercise_name: r.exercise_name,
+        description: r.description,
+        target_body_part: r.target_body_part,
+        difficulty: r.difficulty,
+        recommended_frequency: r.recommended_frequency,
+        sets: r.sets,
+        reps: r.reps,
+        hold_seconds: r.hold_seconds || 0,
+        daily_frequency: r.daily_frequency || 1,
+        safety_notes: r.safety_notes,
+        order_index: r.order_index || 1,
+        media_assets: allMedia.filter(m => m.exercise_id === r.exercise_id)
+      }));
+
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Patient daily guidance fetched successfully',
+        data: { patient, items }
+      }));
+      return;
+    }
+
     if (url === '/api/library/exercises' && req.method === 'GET') {
       const data = db.prepare(`
         SELECT 
@@ -435,6 +542,68 @@ const server = http.createServer(async (req, res) => {
         LEFT JOIN media_assets m ON e.id = m.exercise_id
       `).all();
       res.end(JSON.stringify({ success: true, message: 'OK', data }));
+      return;
+    }
+
+    if (url === '/api/library/exercises' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const name = String(body.name || '').trim();
+      const desc = String(body.description || '').trim();
+      const target = String(body.target_body_part || 'General').trim();
+      const diff = body.difficulty || 'easy';
+      const freq = body.recommended_frequency || '1x daily';
+
+      const insertStmt = db.prepare('INSERT INTO exercises (name, description, target_body_part, difficulty, recommended_frequency) VALUES (?, ?, ?, ?, ?)');
+      const resEx = insertStmt.run(name, desc, target, diff, freq);
+      const exerciseId = resEx.lastInsertRowid;
+
+      if (body.initial_media_url) {
+        db.prepare('INSERT INTO media_assets (exercise_id, asset_type, url, title, thumbnail_url) VALUES (?, ?, ?, ?, ?)')
+          .run(exerciseId, body.initial_media_type || 'video', body.initial_media_url, body.initial_media_title || name, body.initial_thumbnail_url || null);
+      }
+
+      const created = db.prepare('SELECT * FROM exercises WHERE id = ?').get(exerciseId);
+      const media = db.prepare('SELECT * FROM media_assets WHERE exercise_id = ?').all(exerciseId);
+      res.end(JSON.stringify({ success: true, message: 'Exercise created', data: { ...created, media_assets: media } }));
+      return;
+    }
+
+    const exIdMatch = url.match(/^\/api\/library\/exercises\/(\d+)$/);
+    if (exIdMatch && req.method === 'PUT') {
+      const exId = Number(exIdMatch[1]);
+      const body = await parseJsonBody(req);
+      db.prepare('UPDATE exercises SET name = COALESCE(?, name), description = COALESCE(?, description), target_body_part = COALESCE(?, target_body_part), difficulty = COALESCE(?, difficulty), recommended_frequency = COALESCE(?, recommended_frequency) WHERE id = ?')
+        .run(body.name || null, body.description || null, body.target_body_part || null, body.difficulty || null, body.recommended_frequency || null, exId);
+      const updated = db.prepare('SELECT * FROM exercises WHERE id = ?').get(exId);
+      const media = db.prepare('SELECT * FROM media_assets WHERE exercise_id = ?').all(exId);
+      res.end(JSON.stringify({ success: true, message: 'Exercise updated', data: { ...updated, media_assets: media } }));
+      return;
+    }
+
+    if (exIdMatch && req.method === 'DELETE') {
+      const exId = Number(exIdMatch[1]);
+      db.prepare('DELETE FROM media_assets WHERE exercise_id = ?').run(exId);
+      db.prepare('DELETE FROM exercises WHERE id = ?').run(exId);
+      res.end(JSON.stringify({ success: true, message: 'Exercise deleted', data: exId }));
+      return;
+    }
+
+    const exMediaMatch = url.match(/^\/api\/library\/exercises\/(\d+)\/media$/);
+    if (exMediaMatch && req.method === 'POST') {
+      const exId = Number(exMediaMatch[1]);
+      const body = await parseJsonBody(req);
+      const stmt = db.prepare('INSERT INTO media_assets (exercise_id, asset_type, url, title, thumbnail_url) VALUES (?, ?, ?, ?, ?)');
+      const resMedia = stmt.run(exId, body.asset_type || 'video', body.url, body.title || null, body.thumbnail_url || null);
+      const created = db.prepare('SELECT * FROM media_assets WHERE id = ?').get(resMedia.lastInsertRowid);
+      res.end(JSON.stringify({ success: true, message: 'Media added', data: created }));
+      return;
+    }
+
+    const delMediaMatch = url.match(/^\/api\/library\/media\/(\d+)$/);
+    if (delMediaMatch && req.method === 'DELETE') {
+      const mediaId = Number(delMediaMatch[1]);
+      db.prepare('DELETE FROM media_assets WHERE id = ?').run(mediaId);
+      res.end(JSON.stringify({ success: true, message: 'Media removed', data: mediaId }));
       return;
     }
 
