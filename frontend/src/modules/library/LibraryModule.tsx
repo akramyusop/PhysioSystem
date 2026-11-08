@@ -340,7 +340,6 @@ export const LibraryModule: React.FC = () => {
   // Role Mode: 'patient' (Guidance & Daily Checklist) vs 'physio' (Catalog & Media Manager)
   const [roleMode, setRoleMode] = useState<'patient' | 'physio'>('patient');
 
-  const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const playerCardRef = useRef<HTMLDivElement | null>(null);
 
   // Patient step-by-step checklist map
@@ -607,9 +606,6 @@ export const LibraryModule: React.FC = () => {
     }));
   }, [selectedExercise]);
 
-  const activeStepGuide: StepGuideItem | undefined =
-    currentStepGuides[activeStepIndex] || currentStepGuides[0];
-
   // Check if selected exercise has a prescription safety note for the current patient
   const matchingPrescription = useMemo(() => {
     return guidedItems.find(item => item.exercise_id === selectedExercise?.id);
@@ -651,17 +647,8 @@ export const LibraryModule: React.FC = () => {
   const handleSelectExercise = (exerciseId: number, autoScroll: boolean = true) => {
     setSelectedExerciseId(exerciseId);
     setActiveMediaIndex(0);
-    setActiveStepIndex(0);
     setPlaybackRate(1.0);
     if (autoScroll && playerCardRef.current) {
-      playerCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  // Jump to a specific step
-  const jumpToStep = (stepIdx: number) => {
-    setActiveStepIndex(stepIdx);
-    if (playerCardRef.current) {
       playerCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
@@ -854,23 +841,6 @@ export const LibraryModule: React.FC = () => {
     setShowAddMediaForm(false);
     setMediaForm({ asset_type: 'video', url: '', title: '', thumbnail_url: '' });
     showToast('Attached new tutorial media asset.');
-  };
-
-  const handleDeleteMediaAsset = async (mediaId: number) => {
-    try {
-      await fetch(`/api/library/media/${mediaId}`, { method: 'DELETE' });
-    } catch {
-      // fallback local delete
-    }
-    setCatalog(prev =>
-      prev.map(ex =>
-        ex.id === selectedExercise.id
-          ? { ...ex, media_assets: ex.media_assets.filter(m => m.id !== mediaId) }
-          : ex
-      )
-    );
-    setActiveMediaIndex(0);
-    showToast('Removed media asset.', 'info');
   };
 
   const postureCues = getPostureCues(selectedExercise?.target_body_part || '');
