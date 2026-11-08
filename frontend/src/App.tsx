@@ -165,7 +165,7 @@ export const App: React.FC = () => {
       {/* Main Workspace content */}
       <main className="main-content">
         {activeTab === 'prescription' && isDoctor && <PrescriptionModule />}
-        {activeTab === 'library' && <LibraryModule />}
+        {activeTab === 'library' && <LibraryModule currentUser={currentUser} />}
         {activeTab === 'game' && <GameModule currentUser={currentUser} />}
         {activeTab === 'logger' && <LoggerModule />}
         {activeTab === 'analytics' && <AnalyticsModule />}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { ApiResponse, MediaAsset } from '../../types';
+import { ApiResponse, MediaAsset, AuthUser } from '../../types';
 
 export interface StepGuideItem {
   stepNumber: number;
@@ -336,9 +336,16 @@ function getPostureCues(bodyPart: string): { doCue: string; dontCue: string } {
   };
 }
 
-export const LibraryModule: React.FC = () => {
+export interface LibraryModuleProps {
+  currentUser?: AuthUser | null;
+}
+
+export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => {
+  const isDoctorUser = currentUser?.role === 'doctor' || currentUser?.role === 'nurse';
+  const isPatientUser = currentUser?.role === 'patient';
+
   // Role Mode: 'patient' (Guidance & Daily Checklist) vs 'physio' (Catalog & Media Manager)
-  const [roleMode, setRoleMode] = useState<'patient' | 'physio'>('patient');
+  const [roleMode, setRoleMode] = useState<'patient' | 'physio'>(isDoctorUser ? 'physio' : 'patient');
 
   const playerCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -357,10 +364,29 @@ export const LibraryModule: React.FC = () => {
   const [bodyPartFilter, setBodyPartFilter] = useState<string>('All');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('All');
 
-  // Patient Daily Guidance state ("What To Do Next")
+  // Initial patient ID based on logged in user
+  const initialPatientId =
+    isPatientUser && currentUser?.patient_profile_id
+      ? currentUser.patient_profile_id
+      : (currentUser?.username === 'emily_rose' ? 2 : 1);
+
+  // Patient Daily Guidance state ("Exercise Checklist")
   const [patients, setPatients] = useState<PatientOption[]>(FALLBACK_PATIENTS);
-  const [selectedPatientId, setSelectedPatientId] = useState<number>(1);
+  const [selectedPatientId, setSelectedPatientId] = useState<number>(initialPatientId);
   const [guidedItems, setGuidedItems] = useState<GuidedExerciseItem[]>([]);
+
+  // Automatically sync role and patient id whenever logged in user changes
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.role === 'patient') {
+        const pid = currentUser.patient_profile_id || (currentUser.username === 'emily_rose' ? 2 : 1);
+        setSelectedPatientId(pid);
+        setRoleMode('patient');
+      } else {
+        setRoleMode('physio');
+      }
+    }
+  }, [currentUser]);
   const [completedChecklistIds, setCompletedChecklistIds] = useState<Record<number, boolean>>(() => {
     try {
       const saved = localStorage.getItem('physio_mod3_checklist');
@@ -638,8 +664,20 @@ export const LibraryModule: React.FC = () => {
       : 0;
 
   const activePatient = useMemo(() => {
-    return patients.find(p => p.patient_id === selectedPatientId) || FALLBACK_PATIENTS[0];
-  }, [patients, selectedPatientId]);
+    const found = patients.find(p => p.patient_id === selectedPatientId);
+    if (found) return found;
+    if (currentUser?.role === 'patient') {
+      return {
+        patient_id: selectedPatientId,
+        user_id: currentUser.id,
+        full_name: currentUser.full_name,
+        injury_diagnosis: currentUser.injury_diagnosis || 'General Physical Therapy / Rehabilitation',
+        baseline_rom_score: 80.0,
+        notes: 'Personalized recovery program',
+      };
+    }
+    return FALLBACK_PATIENTS[0];
+  }, [patients, selectedPatientId, currentUser]);
 
   const completedCount = guidedItems.filter(i => completedChecklistIds[i.prescribed_id]).length;
 
@@ -875,52 +913,71 @@ export const LibraryModule: React.FC = () => {
           </p>
         </div>
 
-        {/* Role View Switcher (Patient Guidance vs Physiotherapist Catalog Manager) */}
-        <div
-          style={{
-            display: 'flex',
-            background: '#f1f5f9',
-            padding: '0.3rem',
-            borderRadius: '8px',
-            border: '1px solid #cbd5e1',
-            gap: '0.25rem',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setRoleMode('patient')}
+        {/* Role View Switcher or Locked Patient Badge */}
+        {currentUser?.role === 'patient' ? (
+          <div
             style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: '#ecfdf5',
               padding: '0.45rem 0.9rem',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              background: roleMode === 'patient' ? '#0284c7' : 'transparent',
-              color: roleMode === 'patient' ? '#ffffff' : '#475569',
-              transition: 'all 0.15s',
+              borderRadius: '999px',
+              border: '1px solid #a7f3d0',
+              color: '#065f46',
+              fontSize: '0.82rem',
+              fontWeight: 700,
             }}
           >
-            👤 Patient Guidance Mode
-          </button>
-          <button
-            type="button"
-            onClick={() => setRoleMode('physio')}
+            <span>🏃 Patient Guidance Mode</span>
+          </div>
+        ) : (
+          <div
             style={{
-              padding: '0.45rem 0.9rem',
-              borderRadius: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              background: roleMode === 'physio' ? '#0f172a' : 'transparent',
-              color: roleMode === 'physio' ? '#ffffff' : '#475569',
-              transition: 'all 0.15s',
+              display: 'flex',
+              background: '#f1f5f9',
+              padding: '0.3rem',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              gap: '0.25rem',
             }}
           >
-            🩺 Physiotherapist Manager
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setRoleMode('patient')}
+              style={{
+                padding: '0.45rem 0.9rem',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                background: roleMode === 'patient' ? '#0284c7' : 'transparent',
+                color: roleMode === 'patient' ? '#ffffff' : '#475569',
+                transition: 'all 0.15s',
+              }}
+            >
+              {currentUser?.role === 'doctor' ? '👁️ Preview Patient View' : '👤 Patient Guidance Mode'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRoleMode('physio')}
+              style={{
+                padding: '0.45rem 0.9rem',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                background: roleMode === 'physio' ? '#0f172a' : 'transparent',
+                color: roleMode === 'physio' ? '#ffffff' : '#475569',
+                transition: 'all 0.15s',
+              }}
+            >
+              🩺 Physiotherapist Manager
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Toast Notification Banner */}
@@ -951,7 +1008,7 @@ export const LibraryModule: React.FC = () => {
       )}
 
       {/* =====================================================================
-          ROLE PANEL 1: PATIENT "WHAT TO DO NEXT" DAILY CHECKLIST
+          ROLE PANEL 1: PATIENT EXERCISE CHECKLIST
          ===================================================================== */}
       {roleMode === 'patient' && (
         <div
@@ -974,7 +1031,7 @@ export const LibraryModule: React.FC = () => {
           >
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <h3 style={{ margin: 0 }}>📋 Daily Patient "What To Do Next" Checklist</h3>
+                <h3 style={{ margin: 0 }}>📋 Exercise Checklist</h3>
                 <span
                   className="tag"
                   style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem', fontWeight: 700 }}
@@ -988,30 +1045,60 @@ export const LibraryModule: React.FC = () => {
               </p>
             </div>
 
-            {/* Patient Profile Switcher for Demo / Testing */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
-                Viewing Patient:
-              </label>
-              <select
-                value={selectedPatientId}
-                onChange={e => setSelectedPatientId(Number(e.target.value))}
+            {/* Profile info: Patient only sees own record; Doctor/Clinician can select patient */}
+            {currentUser?.role === 'patient' ? (
+              <div
                 style={{
-                  padding: '0.45rem 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  padding: '0.45rem 0.85rem',
+                  background: '#f1f5f9',
                   borderRadius: '6px',
                   border: '1px solid #cbd5e1',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  background: '#fff',
                 }}
               >
-                {patients.map(p => (
-                  <option key={p.patient_id} value={p.patient_id}>
-                    {p.full_name} ({p.injury_diagnosis.split('(')[0].trim()})
-                  </option>
-                ))}
-              </select>
-            </div>
+                {currentUser.avatar_url && (
+                  <img
+                    src={currentUser.avatar_url}
+                    alt={currentUser.full_name}
+                    style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                )}
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>
+                    Assigned Patient:
+                  </span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
+                    {currentUser.full_name}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                  Viewing Patient:
+                </label>
+                <select
+                  value={selectedPatientId}
+                  onChange={e => setSelectedPatientId(Number(e.target.value))}
+                  style={{
+                    padding: '0.45rem 0.75rem',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    background: '#fff',
+                  }}
+                >
+                  {patients.map(p => (
+                    <option key={p.patient_id} value={p.patient_id}>
+                      {p.full_name} ({p.injury_diagnosis.split('(')[0].trim()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Progress Bar */}
