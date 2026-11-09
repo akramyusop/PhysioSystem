@@ -188,7 +188,7 @@ export const App: React.FC = () => {
             initialGameMode={selectedGameMode}
           />
         )}
-        {activeTab === 'logger' && <LoggerModule />}
+        {activeTab === 'logger' && <LoggerModule currentUser={currentUser} />}
         {activeTab === 'analytics' && (
           <AnalyticsModule
             currentUser={currentUser}

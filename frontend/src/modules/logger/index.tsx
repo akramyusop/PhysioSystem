@@ -1,6 +1,7 @@
 // frontend/src/modules/logger/index.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import './logger.css';
+import { AuthUser } from '../../types';
 
 export interface ActivityLog {
   id?: number;
@@ -56,6 +57,18 @@ const DEFAULT_PATIENTS: PatientItem[] = [
     name: 'Emily Rose',
     diagnosis: 'Adhesive Capsulitis (Frozen Shoulder - Left)',
     avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'PT-003',
+    name: 'Alex San',
+    diagnosis: 'Lower Back Lumbar Strain',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'PT-004',
+    name: 'Test Patient',
+    diagnosis: 'Lumbar Disc Herniation',
+    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   },
 ];
 
@@ -133,7 +146,11 @@ export const PatientAvatar: React.FC<PatientAvatarProps> = ({
   );
 };
 
-export const NurseActivityLogger: React.FC = () => {
+export interface NurseActivityLoggerProps {
+  currentUser?: AuthUser | null;
+}
+
+export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState<'activity' | 'vitals'>('activity');
   const [patientFilter, setPatientFilter] = useState('');
 
@@ -155,6 +172,89 @@ export const NurseActivityLogger: React.FC = () => {
   // --- Feature 1: Voice Dictation State ---
   const [isDictatingAct, setIsDictatingAct] = useState<boolean>(false);
   const [isDictatingVit, setIsDictatingVit] = useState<boolean>(false);
+
+  const isPatient = currentUser?.role === 'patient';
+  const matchedPatient = patients.find(
+    (p) =>
+      p.name.toLowerCase() === (currentUser?.full_name || '').toLowerCase() ||
+      (currentUser?.username?.toLowerCase().includes('john') && p.id === 'PT-001') ||
+      (currentUser?.username?.toLowerCase().includes('emily') && p.id === 'PT-002') ||
+      (currentUser?.username?.toLowerCase().includes('alex') && p.id === 'PT-003') ||
+      (currentUser?.username?.toLowerCase().includes('test') && p.id === 'PT-004')
+  ) || patients[0];
+
+  // Shift Handover Scope (controls active shift window vs unlimited historical archive)
+  const [shiftScope, setShiftScope] = useState<'current' | 'today' | 'all'>('current');
+
+  // Patient Self-Logging State (Log Pain and Sets)
+  const [patientPain, setPatientPain] = useState<number>(2);
+  const [patientExercise, setPatientExercise] = useState<string>('Quadriceps Isometric Set');
+  const [patientSets, setPatientSets] = useState<number>(3);
+  const [patientReps, setPatientReps] = useState<number>(10);
+  const [patientDuration, setPatientDuration] = useState<number>(15);
+  const [patientRpe, setPatientRpe] = useState<number>(4);
+  const [patientNotes, setPatientNotes] = useState<string>('');
+  const [patientSubmittedToast, setPatientSubmittedToast] = useState<boolean>(false);
+
+  const handlePatientSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const notesFormatted = `[Pain: ${patientPain}/10 | Sets: ${patientSets} × ${patientReps} | RPE: ${patientRpe}/10 | Duration: ${patientDuration} mins] ${patientNotes}`.trim();
+
+    const newActivity: ActivityLog = {
+      patient_id: matchedPatient.id,
+      nurse_name: 'Self-Logged (Patient Check-in)',
+      activity_type: `${patientExercise} (Self-Logged)`,
+      duration_minutes: patientDuration,
+      assistance_level: 'Independent (Self-Guided)',
+      notes: notesFormatted,
+      id: Date.now(),
+      logged_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      voided: false,
+    };
+
+    const newVital: VitalNote = {
+      patient_id: matchedPatient.id,
+      nurse_name: 'Self-Logged Check-in',
+      bp_systolic: 120,
+      bp_diastolic: 80,
+      heart_rate: 72,
+      spo2: 98,
+      temperature_c: 36.8,
+      pain_score: patientPain,
+      clinical_remarks: `[Patient Self-Report] Pain rating: ${patientPain}/10 after ${patientSets} sets of ${patientExercise}. ${patientNotes}`.trim(),
+      id: Date.now(),
+      recorded_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      news2_score: 0,
+      voided: false,
+    };
+
+    try {
+      await fetch(`${API_BASE}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newActivity),
+      });
+      await fetch(`${API_BASE}/vitals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newVital),
+      });
+    } catch {
+      // Offline fallback
+    }
+
+    const updatedActs = [newActivity, ...activities];
+    setActivities(updatedActs);
+    localStorage.setItem('mod5_activity_logs', JSON.stringify(updatedActs));
+
+    const updatedVits = [newVital, ...vitals];
+    setVitals(updatedVits);
+    localStorage.setItem('mod5_vital_notes', JSON.stringify(updatedVits));
+
+    setPatientNotes('');
+    setPatientSubmittedToast(true);
+    setTimeout(() => setPatientSubmittedToast(false), 4000);
+  };
 
   // Activity Form State
   const [actForm, setActForm] = useState<ActivityLog>({
@@ -938,17 +1038,362 @@ export const NurseActivityLogger: React.FC = () => {
     }
   };
 
-  // Filtered feeds
-  const filteredActivities = patientFilter
-    ? activities.filter((a) => a.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
-    : activities;
+  // Helper to determine if a record falls into current shift window
+  const isWithinShift = (logTime?: string, id?: number) => {
+    if (shiftScope === 'all') return true;
+    if (id && id > 1700000000000) {
+      const hoursAgo = (Date.now() - id) / (1000 * 60 * 60);
+      if (shiftScope === 'current') return hoursAgo <= 8;
+      if (shiftScope === 'today') return hoursAgo <= 24;
+    }
+    // Simple time strings (e.g. 09:30 AM) logged during active shift
+    if (logTime && logTime.includes(':') && !logTime.includes('-')) return true;
+    return false;
+  };
 
-  const filteredVitals = patientFilter
-    ? vitals.filter((v) => v.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
-    : vitals;
+  // Filtered feeds according to patient and active shift window
+  const filteredActivities = activities
+    .filter((a) => !patientFilter || a.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
+    .filter((a) => isWithinShift(a.logged_at, a.id));
+
+  const filteredVitals = vitals
+    .filter((v) => !patientFilter || v.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
+    .filter((v) => isWithinShift(v.recorded_at, v.id));
 
   const selectedActPatient = patients.find((p) => p.id === actForm.patient_id);
   const selectedVitPatient = patients.find((p) => p.id === vitalForm.patient_id);
+
+  // ==========================================================
+  // PATIENT VIEW: LOG PAIN AND SETS
+  // ==========================================================
+  if (isPatient) {
+    const myLogs = activities.filter((a) => a.patient_id === matchedPatient.id);
+    const painColors = [
+      { max: 0, color: '#10b981', label: 'Zero Pain (Comfortable)', emoji: '😊' },
+      { max: 3, color: '#22c55e', label: 'Mild & Manageable', emoji: '🙂' },
+      { max: 6, color: '#eab308', label: 'Moderate Discomfort', emoji: '😐' },
+      { max: 8, color: '#f97316', label: 'Severe Pain — Rest Advised', emoji: '😣' },
+      { max: 10, color: '#ef4444', label: 'Extreme Pain — Contact Clinic', emoji: '😫' },
+    ];
+    const currentPainMeta = painColors.find((p) => patientPain <= p.max) || painColors[painColors.length - 1];
+
+    return (
+      <div className="mod5-patient-portal">
+        {/* Patient Portal Header Banner */}
+        <div className="mod5-patient-banner">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+              <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700 }}>
+                🏃 Patient Recovery Portal
+              </span>
+              <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                ID: <strong>{matchedPatient.id}</strong>
+              </span>
+            </div>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0 0 0.35rem 0' }}>
+              Log Pain & Completed Sets
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.88rem', opacity: 0.92, maxWidth: '650px' }}>
+              Welcome back, <strong>{matchedPatient.name}</strong> ({matchedPatient.diagnosis || 'Rehabilitation Routine'}). 
+              Track your daily home routine, completed sets, and pain response so your physiotherapist can adjust your recovery safely.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+            <PatientAvatar size="lg" patientId={matchedPatient.id} patientName={matchedPatient.name} avatarUrl={matchedPatient.avatar_url} />
+          </div>
+        </div>
+
+        {/* Quick Stat Cards */}
+        <div className="mod5-patient-stat-grid">
+          <div className="mod5-patient-stat-card">
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>CHECK-IN STREAK</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#38bdf8' }}>
+              🔥 {Math.min(myLogs.length + 1, 7)} Days Active
+            </div>
+          </div>
+          <div className="mod5-patient-stat-card">
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>TOTAL CHECK-INS</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#2dd4bf' }}>
+              📋 {myLogs.length} Logged
+            </div>
+          </div>
+          <div className="mod5-patient-stat-card">
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>TARGET DOSAGE</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#a78bfa' }}>
+              🎯 2 - 3 Sets / Day
+            </div>
+          </div>
+          <div className="mod5-patient-stat-card">
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>SUPERVISING CLINICIAN</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f1f5f9' }}>
+              🩺 Dr. Sarah Chen, MD
+            </div>
+          </div>
+        </div>
+
+        {/* Success Alert Toast */}
+        {patientSubmittedToast && (
+          <div className="mod5-toast-success">
+            <span>✓</span>
+            <div>
+              <strong>Recovery check-in successfully recorded!</strong>
+              <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
+                Your pain rating and completed sets have been synchronized with Module 6 (Recovery Analytics) for Dr. Chen and your supervising nurse.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main 2-Column Grid */}
+        <div className="mod5-main-grid">
+          {/* Left: Patient Check-in Form */}
+          <div className="mod5-card">
+            <form onSubmit={handlePatientSubmit} className="mod5-form">
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', margin: '0 0 1rem 0' }}>
+                ✍️ Record Today's Exercise & Pain
+              </h2>
+
+              {/* 1. Exercise Routine Selection */}
+              <div>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>1. Select Exercise Performed</label>
+                <select
+                  value={patientExercise}
+                  onChange={(e) => setPatientExercise(e.target.value)}
+                  style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', background: '#0f172a', border: '1px solid #475569', color: '#ffffff' }}
+                >
+                  <option value="Quadriceps Isometric Set">Quadriceps Isometric Set (Knee & Quad)</option>
+                  <option value="Heel Slides with Strap">Heel Slides with Strap (Flexion & Hamstring)</option>
+                  <option value="Upper-Limb Fruit Reach (Rehab Game)">Upper-Limb Fruit Reach (Rehab Game 1)</option>
+                  <option value="Sky Glider Trajectory (Rehab Game)">Sky Glider Trajectory (Rehab Game 2)</option>
+                  <option value="Neural Hold Stabilizer (Rehab Game)">Neural Hold Stabilizer (Rehab Game 3)</option>
+                  <option value="Shoulder Pendulum Swing">Shoulder Pendulum Swing (Shoulder Mobility)</option>
+                  <option value="Wall Angels">Wall Angels (Thoracic & Posture)</option>
+                  <option value="Walking & Ambulation Practice">Walking & Ambulation Practice</option>
+                  <option value="General Home Stretching">General Home Stretching & Mobility</option>
+                </select>
+              </div>
+
+              {/* 2. Sets and Reps Dosage with Presets */}
+              <div style={{ marginTop: '0.75rem' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>2. Sets & Repetitions Completed</label>
+                
+                {/* Quick Dosage Presets */}
+                <div className="mod5-preset-pills">
+                  <button
+                    type="button"
+                    onClick={() => { setPatientSets(2); setPatientReps(8); }}
+                    className={`mod5-preset-btn ${patientSets === 2 && patientReps === 8 ? 'active' : ''}`}
+                  >
+                    2 Sets × 8 Reps
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPatientSets(3); setPatientReps(10); }}
+                    className={`mod5-preset-btn ${patientSets === 3 && patientReps === 10 ? 'active' : ''}`}
+                  >
+                    3 Sets × 10 Reps (Standard)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPatientSets(3); setPatientReps(12); }}
+                    className={`mod5-preset-btn ${patientSets === 3 && patientReps === 12 ? 'active' : ''}`}
+                  >
+                    3 Sets × 12 Reps
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPatientSets(2); setPatientReps(15); }}
+                    className={`mod5-preset-btn ${patientSets === 2 && patientReps === 15 ? 'active' : ''}`}
+                  >
+                    2 Sets × 15 Reps
+                  </button>
+                </div>
+
+                <div className="mod5-grid-3">
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Sets</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={patientSets}
+                      onChange={(e) => setPatientSets(Number(e.target.value))}
+                      style={{ width: '100%', textAlign: 'center', fontWeight: 800 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Reps / Set</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={patientReps}
+                      onChange={(e) => setPatientReps(Number(e.target.value))}
+                      style={{ width: '100%', textAlign: 'center', fontWeight: 800 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Duration (mins)</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={patientDuration}
+                      onChange={(e) => setPatientDuration(Number(e.target.value))}
+                      style={{ width: '100%', textAlign: 'center', fontWeight: 800 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Visual Pain Scale Slider */}
+              <div className="mod5-pain-slider-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>
+                    3. Pain Level During / After Exercise
+                  </label>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: currentPainMeta.color }}>
+                    {currentPainMeta.emoji} {patientPain} / 10
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={patientPain}
+                  onChange={(e) => setPatientPain(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: currentPainMeta.color, cursor: 'pointer' }}
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.35rem' }}>
+                  <span>0 - No Pain 😊</span>
+                  <span>5 - Moderate 😐</span>
+                  <span>10 - Severe 😫</span>
+                </div>
+
+                <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', borderRadius: '6px', backgroundColor: 'rgba(0,0,0,0.3)', border: `1px solid ${currentPainMeta.color}`, fontSize: '0.78rem', color: currentPainMeta.color, fontWeight: 700 }}>
+                  Clinical Evaluation: {currentPainMeta.label}
+                </div>
+              </div>
+
+              {/* 4. Perceived Exertion (RPE) */}
+              <div>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                  4. How hard did this feel? (RPE Exertion: <strong>{patientRpe} / 10</strong>)
+                </label>
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem' }}>
+                  {[
+                    { val: 2, label: 'Light' },
+                    { val: 4, label: 'Moderate' },
+                    { val: 6, label: 'Somewhat Hard' },
+                    { val: 8, label: 'Very Hard' },
+                    { val: 10, label: 'Maximum' },
+                  ].map((rpe) => (
+                    <button
+                      key={rpe.val}
+                      type="button"
+                      onClick={() => setPatientRpe(rpe.val)}
+                      className={`mod5-preset-btn ${patientRpe === rpe.val ? 'active' : ''}`}
+                      style={{ flex: 1, padding: '0.35rem 0.2rem', textAlign: 'center', fontSize: '0.75rem' }}
+                    >
+                      {rpe.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 5. Quick Sensation & Symptom Chips */}
+              <div style={{ marginTop: '0.75rem' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.85rem' }}>5. How did your joint & muscles feel?</label>
+                <div className="mod5-chips-row" style={{ marginTop: '0.35rem' }}>
+                  {[
+                    'Completed smoothly without stopping 💪',
+                    'Mild stiffness upon starting 🌅',
+                    'Applied 5 min ice pack afterwards 🧊',
+                    'Felt slight joint click / pop ⚠️',
+                    'High energy & good strength today ⚡',
+                    'Needed short pause between sets ⏸️',
+                  ].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setPatientNotes((prev) => (prev ? `${prev} ${chip}` : chip))}
+                      className="mod5-chip-btn"
+                    >
+                      + {chip.split(' ')[0]} {chip.split(' ')[1]}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  rows={2}
+                  placeholder="Tell your doctor or nurse how you felt (e.g. knee felt steady, slight pain on rep 8)..."
+                  value={patientNotes}
+                  onChange={(e) => setPatientNotes(e.target.value)}
+                  style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', borderRadius: '6px', background: '#0f172a', border: '1px solid #475569', color: '#ffffff' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="mod5-submit-btn"
+                style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', marginTop: '1rem', padding: '0.75rem' }}
+              >
+                💾 Save Today's Recovery Log
+              </button>
+            </form>
+          </div>
+
+          {/* Right: Patient History Feed */}
+          <div className="mod5-feed">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+                📜 My Past Recovery Check-ins ({myLogs.length})
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: '#38bdf8' }}>Synchronized with Clinical EHR</span>
+            </div>
+
+            {myLogs.length === 0 ? (
+              <div className="mod5-empty" style={{ padding: '2.5rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📝</div>
+                <strong>No recovery check-ins logged yet.</strong>
+                <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.4rem 0 0 0' }}>
+                  Fill out the form on the left after finishing today's prescribed routine to log your sets and pain rating.
+                </p>
+              </div>
+            ) : (
+              myLogs.map((log) => (
+                <div key={log.id} className="mod5-patient-history-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                    <div>
+                      <strong style={{ fontSize: '0.95rem', color: '#ffffff' }}>{log.activity_type}</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.1rem' }}>
+                        🕒 {log.logged_at} • Mode: {log.assistance_level}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', backgroundColor: '#0369a1', color: '#ffffff' }}>
+                      ⏱️ {log.duration_minutes} mins
+                    </span>
+                  </div>
+
+                  {log.notes && (
+                    <div style={{ background: '#0f172a', padding: '0.55rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#cbd5e1', border: '1px solid #334155', marginTop: '0.4rem' }}>
+                      {log.notes}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mod5-container">
@@ -962,20 +1407,46 @@ export const NurseActivityLogger: React.FC = () => {
         </div>
 
         <div className="mod5-controls">
-          <button onClick={handleExportCsv} className="mod5-export-btn" title="Export current shift records to CSV">
-            📥 Export Shift CSV
-          </button>
-          <button onClick={handlePrintHandover} className="mod5-export-btn" title="Print clinical shift summary">
-            🖨️ Print Handover
-          </button>
+          {/* Pop-Out Vibrant Tab Switcher */}
+          <div className="mod5-tab-switch">
+            <button
+              onClick={() => setActiveTab('activity')}
+              className={`mod5-tab-btn tab-act ${activeTab === 'activity' ? 'active' : ''}`}
+              title="View physical therapy & exercise tolerance sessions"
+            >
+              <span>🏃 Activity Logs</span>
+              <span className="mod5-tab-badge">{filteredActivities.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('vitals')}
+              className={`mod5-tab-btn tab-vit ${activeTab === 'vitals' ? 'active' : ''}`}
+              title="View patient hemodynamic vitals & automated NEWS2 scores"
+            >
+              <span>🩺 Vital Notes & NEWS2</span>
+              <span className="mod5-tab-badge">{filteredVitals.length}</span>
+            </button>
+          </div>
 
+          {/* Shift Handover Window Selector */}
+          <select
+            value={shiftScope}
+            onChange={(e) => setShiftScope(e.target.value as any)}
+            className="mod5-shift-select"
+            title="Select nursing shift window for handover documentation"
+          >
+            <option value="current">Active Shift (8h Window)</option>
+            <option value="today">Today's Cycle (24h)</option>
+            <option value="all">Full Archive (Unlimited History)</option>
+          </select>
+
+          {/* Patient Filter */}
           <select
             value={patientFilter}
             onChange={(e) => setPatientFilter(e.target.value)}
             className="mod5-filter-input"
             style={{ cursor: 'pointer' }}
           >
-            <option value="">All Patients ({patients.length})</option>
+            <option value="">All Ward Patients ({patients.length})</option>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 Filter: {p.id} — {p.name}
@@ -983,20 +1454,32 @@ export const NurseActivityLogger: React.FC = () => {
             ))}
           </select>
 
-          <div className="mod5-tab-switch">
-            <button
-              onClick={() => setActiveTab('activity')}
-              className={`mod5-tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
-            >
-              Activity Logs ({filteredActivities.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('vitals')}
-              className={`mod5-tab-btn ${activeTab === 'vitals' ? 'active' : ''}`}
-            >
-              Vital Notes ({filteredVitals.length})
-            </button>
-          </div>
+          <button onClick={handleExportCsv} className="mod5-export-btn" title="Export shift records to CSV file">
+            📥 Export CSV
+          </button>
+          <button onClick={handlePrintHandover} className="mod5-export-btn" title="Print shift handover dossier with signatures">
+            🖨️ Print Handover
+          </button>
+        </div>
+      </div>
+
+      {/* Shift Handover Scope & Archive Banner */}
+      <div className="mod5-shift-banner">
+        <div>
+          <strong style={{ color: '#2dd4bf' }}>📋 Nursing Shift Handover Window:</strong>{' '}
+          <span>
+            {shiftScope === 'current'
+              ? 'Active 8-Hour Ward Shift'
+              : shiftScope === 'today'
+              ? "Today's Full 24-Hour Shift Cycle"
+              : 'Full Historical Clinical Archive'}
+          </span>
+          <span style={{ color: '#94a3b8', marginLeft: '0.6rem' }}>
+            ({filteredActivities.length} activities, {filteredVitals.length} vitals included)
+          </span>
+        </div>
+        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+          💡 SQLite retains <strong style={{ color: '#ffffff' }}>unlimited total history</strong> • Handover window keeps shift dossiers concise
         </div>
       </div>
 

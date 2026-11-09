@@ -581,3 +581,185 @@
 
 
 
+
+
+/* Pop-out High-Contrast Switcher for Doctor/Nurse View */
+.mod5-tab-switch {
+  display: flex;
+  background: #090e1a;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 2px solid #334155;
+  gap: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.mod5-tab-btn {
+  padding: 0.6rem 1.35rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mod5-tab-btn:hover {
+  background: #334155;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* Activity Logs Active: High-visibility Teal/Cyan Gradient Glow */
+.mod5-tab-btn.active.tab-act {
+  background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);
+  color: #ffffff;
+  border: 1px solid #5eead4;
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Vital Notes Active: High-visibility Violet/Indigo Gradient Glow */
+.mod5-tab-btn.active.tab-vit {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  border: 1px solid #c084fc;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.mod5-tab-badge {
+  background: rgba(0, 0, 0, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+/* Shift Scope Banner */
+.mod5-shift-banner {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-left: 4px solid #0d9488;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.mod5-shift-select {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #f1f5f9;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Patient View: Log Pain & Sets Styles */
+.mod5-patient-portal {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: #f8fafc;
+  margin-top: 1rem;
+}
+
+.mod5-patient-banner {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgba(2, 132, 199, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.mod5-patient-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.mod5-patient-stat-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.mod5-pain-slider-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.mod5-preset-pills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.mod5-preset-btn {
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mod5-preset-btn:hover, .mod5-preset-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.mod5-patient-history-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.2s ease;
+}
+
+.mod5-patient-history-card:hover {
+  border-color: #475569;
+}
+
+.mod5-toast-success {
+  background: #065f46;
+  border: 1px solid #34d399;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
