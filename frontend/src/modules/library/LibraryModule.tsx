@@ -1239,11 +1239,37 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser, onNav
         <div
           className="card"
           style={{
-            borderLeft: '4px solid #0284c7',
-            background: 'linear-gradient(to right, #f8fafc, #ffffff)',
-            marginBottom: '1.5rem',
+            border: '2px solid #38bdf8',
+            borderLeft: '8px solid #0284c7',
+            background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 55%, #f8fafc 100%)',
+            marginBottom: '2rem',
+            padding: '1.5rem',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(2, 132, 199, 0.15), 0 8px 10px -6px rgba(2, 132, 199, 0.1)',
+            position: 'relative',
           }}
         >
+          {/* Top highlight indicator tag */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              background: '#0284c7',
+              color: '#ffffff',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              marginBottom: '0.85rem',
+              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+            }}
+          >
+            <span>📌 Today's Prescribed Recovery Regimen</span>
+          </div>
+
           <div
             style={{
               display: 'flex',
@@ -1255,17 +1281,27 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser, onNav
             }}
           >
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <h3 style={{ margin: 0 }}>📋 Exercise Checklist</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '1.35rem', color: '#0f172a', fontWeight: 800 }}>
+                  📋 Exercise Checklist
+                </h3>
                 <span
                   className="tag"
-                  style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem', fontWeight: 700 }}
+                  style={{
+                    background: completedCount === guidedItems.length && guidedItems.length > 0 ? '#dcfce7' : '#e0f2fe',
+                    color: completedCount === guidedItems.length && guidedItems.length > 0 ? '#166534' : '#0369a1',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.65rem',
+                    borderRadius: '999px',
+                    border: completedCount === guidedItems.length && guidedItems.length > 0 ? '1px solid #86efac' : '1px solid #bae6fd',
+                  }}
                 >
                   {completedCount} of {guidedItems.length} Exercises Completed
                 </span>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#475569', marginTop: '0.25rem' }}>
-                Diagnosis: <strong>{activePatient.injury_diagnosis}</strong>
+              <p style={{ fontSize: '0.88rem', color: '#475569', marginTop: '0.35rem' }}>
+                Diagnosis: <strong style={{ color: '#0f172a' }}>{activePatient.injury_diagnosis}</strong>
                 {activePatient.notes ? ` • Clinical Note: ${activePatient.notes}` : ''}
               </p>
             </div>
@@ -1882,6 +1918,38 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser, onNav
           )}
         </div>
       )}
+
+      {/* Visual Section Barrier separating Patient Checklist / Manager from the General Catalog & Video Player */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          margin: '2rem 0 1.5rem',
+        }}
+      >
+        <div style={{ flex: 1, height: '1.5px', background: 'linear-gradient(to right, transparent, #cbd5e1)' }} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.4rem 1.15rem',
+            borderRadius: '999px',
+            background: '#f8fafc',
+            border: '1.5px solid #cbd5e1',
+            color: '#334155',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <span>📚 Clinical Video Library & Exercise Catalog</span>
+        </div>
+        <div style={{ flex: 1, height: '1.5px', background: 'linear-gradient(to left, transparent, #cbd5e1)' }} />
+      </div>
 
       {/* =====================================================================
           MAIN SPLIT VIEW: LEFT = FILTERABLE EXERCISE CATALOG, RIGHT = VIDEO & CAROUSEL PLAYER
