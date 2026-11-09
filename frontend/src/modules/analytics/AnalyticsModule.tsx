@@ -8,6 +8,18 @@ interface AnalyticsModuleProps {
   onNavigateToGame?: () => void;
 }
 
+export const getNormalRom = (diagnosis?: string, id?: number): number => {
+  const diag = (diagnosis || '').toLowerCase();
+  if (diag.includes('knee') || diag.includes('acl') || id === 1) return 135;
+  if (diag.includes('shoulder') || diag.includes('capsulitis') || diag.includes('rotator') || id === 2) return 165;
+  if (diag.includes('lumbar') || diag.includes('spine') || diag.includes('strain') || diag.includes('disc') || id === 3 || id === 4) return 90;
+  if (diag.includes('hip')) return 120;
+  if (diag.includes('ankle')) return 45;
+  if (diag.includes('elbow')) return 145;
+  if (diag.includes('wrist') || diag.includes('cervical')) return 70;
+  return 130;
+};
+
 export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
   currentUser,
   onNavigateToPrescription,
@@ -620,6 +632,9 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               Max Achieved: <strong style={{ color: '#16a34a' }}>{selectedSummary?.max_rom_achieved ?? 60}&deg;</strong>
             </span>
             <span style={{ color: '#64748b' }}>
+              Normal ROM: <strong style={{ color: '#0284c7' }}>{getNormalRom(selectedSummary?.injury_diagnosis, selectedSummary?.patient_profile_id)}&deg;</strong>
+            </span>
+            <span style={{ color: '#64748b' }}>
               Adherence: <strong>{selectedSummary?.adherence_rate_pct ?? 70}%</strong>
             </span>
           </div>
@@ -964,6 +979,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                   <th style={{ padding: '0.75rem' }}>Diagnosis</th>
                   <th style={{ padding: '0.75rem' }}>Baseline ROM</th>
                   <th style={{ padding: '0.75rem' }}>Max ROM</th>
+                  <th style={{ padding: '0.75rem' }}>Normal ROM</th>
                   <th style={{ padding: '0.75rem' }}>Avg Pain</th>
                   <th style={{ padding: '0.75rem' }}>Adherence</th>
                   <th style={{ padding: '0.75rem' }}>Sessions</th>
@@ -995,6 +1011,9 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                       </td>
                       <td style={{ padding: '0.75rem', fontWeight: 700, color: '#16a34a' }}>
                         {s.max_rom_achieved ?? 60}&deg;
+                      </td>
+                      <td style={{ padding: '0.75rem', fontWeight: 600, color: '#0284c7' }}>
+                        {getNormalRom(s.injury_diagnosis, s.patient_profile_id)}&deg;
                       </td>
                       <td style={{ padding: '0.75rem' }}>
                         <span
@@ -1246,7 +1265,7 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '1.5rem', textAlign: 'center' }}>
               <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Baseline ROM</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{trendData.patient_info.baseline_rom}&deg;</div>
@@ -1255,6 +1274,12 @@ export const AnalyticsModule: React.FC<AnalyticsModuleProps> = ({
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Max Achieved</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#16a34a' }}>
                   {trendData.rom_progression[trendData.rom_progression.length - 1]?.rom_angle || 98}&deg;
+                </div>
+              </div>
+              <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Normal ROM</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0284c7' }}>
+                  {getNormalRom(trendData.patient_info.diagnosis, trendData.patient_info.id)}&deg;
                 </div>
               </div>
               <div style={{ padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
