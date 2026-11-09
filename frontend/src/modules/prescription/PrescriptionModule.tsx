@@ -155,6 +155,45 @@ const CLINICAL_TEMPLATES: ClinicalTemplate[] = [
       },
     ],
   },
+  {
+    id: 'gamified-neuro-rehab',
+    name: 'Interactive Biofeedback & Rehab Game Regimen',
+    targetCondition: 'Neuroplasticity, Motor Control & Upper Limb',
+    icon: '🎮',
+    color: '#7e22ce',
+    badge: 'Gamified • Computer Vision',
+    description: 'Combines real-time webcam motion tracking with reach-to-grasp, trajectory control, and isometric holds.',
+    recommendedDurationWeeks: 4,
+    exercises: [
+      {
+        exerciseNameMatch: 'Upper-Limb Fruit Reach',
+        fallbackExerciseId: 5,
+        sets: 2,
+        reps: 8,
+        hold_seconds: 0,
+        daily_frequency: 1,
+        safety_notes: 'Webcam motion tracking: Reach within comfortable arc. Avoid over-reaching.',
+      },
+      {
+        exerciseNameMatch: 'Sky Glider Trajectory',
+        fallbackExerciseId: 6,
+        sets: 2,
+        reps: 6,
+        hold_seconds: 0,
+        daily_frequency: 1,
+        safety_notes: 'Maintain smooth, steady limb elevation to guide the glider.',
+      },
+      {
+        exerciseNameMatch: 'Neural Hold Stabilizer',
+        fallbackExerciseId: 7,
+        sets: 2,
+        reps: 5,
+        hold_seconds: 5,
+        daily_frequency: 2,
+        safety_notes: 'Hold limb steady inside target ring until 100% charged.',
+      },
+    ],
+  },
 ];
 
 export interface PrescriptionModuleProps {
@@ -355,6 +394,9 @@ export const PrescriptionModule: React.FC<PrescriptionModuleProps> = ({
           { id: 2, name: 'Heel Slides with Strap', description: 'Slowly slide heel toward buttocks.', target_body_part: 'Knee / Hamstring', difficulty: 'medium' },
           { id: 3, name: 'Shoulder Pendulum Swing', description: 'Gentle circles with injured arm.', target_body_part: 'Shoulder', difficulty: 'easy' },
           { id: 4, name: 'Wall Angels', description: 'Back against wall, slide arms upward.', target_body_part: 'Upper Back & Shoulder', difficulty: 'medium' },
+          { id: 5, name: 'Upper-Limb Fruit Reach (Rehab Game)', description: 'Gamified reach-and-grasp webcam exercise.', target_body_part: 'Shoulder Abduction & Hand-Eye Coordination', difficulty: 'easy' },
+          { id: 6, name: 'Sky Glider Trajectory (Rehab Game)', description: 'Biofeedback flight trajectory tracker.', target_body_part: 'Upper Extremity & Trunk Stability', difficulty: 'medium' },
+          { id: 7, name: 'Neural Hold Stabilizer (Rehab Game)', description: 'Isometric stabilization and proprioception.', target_body_part: 'Joint Proprioception & Isometric Hold', difficulty: 'easy' },
         ]);
       }
     } catch (err) {
@@ -2004,18 +2046,34 @@ export const PrescriptionModule: React.FC<PrescriptionModuleProps> = ({
                       <strong style={{ color: '#0284c7', fontSize: '1rem' }}>
                         {idx + 1}. {ex.exercise_name || `Exercise #${ex.exercise_id}`}
                       </strong>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: '#f1f5f9',
-                          color: '#475569',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {ex.target_body_part || 'General'}
-                      </span>
+                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        {((ex.exercise_name || '').toLowerCase().includes('game') || [5, 6, 7].includes(ex.exercise_id)) && (
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              backgroundColor: '#f3e8ff',
+                              color: '#7e22ce',
+                              fontWeight: 800,
+                            }}
+                          >
+                            🎮 REHAB GAME
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: '#f1f5f9',
+                            color: '#475569',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {ex.target_body_part || 'General'}
+                        </span>
+                      </div>
                     </div>
 
                     <div
@@ -2596,8 +2654,46 @@ export const PrescriptionModule: React.FC<PrescriptionModuleProps> = ({
                               >
                                 {ex.target_body_part || 'Knee / Mobility'}
                               </span>
+                              {((ex.exercise_name || '').toLowerCase().includes('game') || [5, 6, 7].includes(ex.exercise_id)) && (
+                                <span
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800,
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#f3e8ff',
+                                    color: '#7e22ce',
+                                    border: '1px solid #d8b4fe',
+                                  }}
+                                >
+                                  🎮 REHAB GAME (MODULE 4)
+                                </span>
+                              )}
                             </div>
                           </div>
+
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            {((ex.exercise_name || '').toLowerCase().includes('game') || [5, 6, 7].includes(ex.exercise_id)) && onNavigateToGame && (
+                              <button
+                                onClick={onNavigateToGame}
+                                style={{
+                                  padding: '6px 14px',
+                                  borderRadius: '20px',
+                                  border: 'none',
+                                  backgroundColor: '#7e22ce',
+                                  color: '#ffffff',
+                                  fontWeight: 700,
+                                  fontSize: '0.82rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.4rem',
+                                  boxShadow: '0 2px 6px rgba(126, 34, 206, 0.25)',
+                                }}
+                              >
+                                ▶️ Play in Game Engine
+                              </button>
+                            )}
 
                           {/* Completion Toggle */}
                           <button
@@ -2624,6 +2720,7 @@ export const PrescriptionModule: React.FC<PrescriptionModuleProps> = ({
                             {isDone ? '✓ Completed Today' : '○ Mark as Done'}
                           </button>
                         </div>
+                      </div>
 
                         {/* Prescribed Dosage Parameters */}
                         <div

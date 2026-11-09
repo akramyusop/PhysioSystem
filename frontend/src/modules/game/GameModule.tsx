@@ -31,6 +31,22 @@ const PATIENTS: PatientOption[] = [
     defaultGame: 'Sky Glider Trajectory',
     dailyGoalReps: 6,
   },
+  {
+    id: 3,
+    name: 'Alex San',
+    diagnosis: 'Lower Back Lumbar Strain & Core Instability',
+    prescribedBy: 'Dr. Sarah Chen, MD',
+    defaultGame: 'Neural Hold Stabilizer',
+    dailyGoalReps: 5,
+  },
+  {
+    id: 4,
+    name: 'Test Patient',
+    diagnosis: 'Lumbar Disc Herniation & Posture Rehabilitation',
+    prescribedBy: 'Dr. Sarah Chen, MD',
+    defaultGame: 'Upper-Limb Fruit Reach',
+    dailyGoalReps: 8,
+  },
 ];
 
 const GAME_CONFIGS: Record<
@@ -85,8 +101,9 @@ export const GameModule: React.FC<GameModuleProps> = ({ currentUser }) => {
 
     const isPatient = currentUser?.role === 'patient';
   const initialPatientId = isPatient && currentUser?.patient_profile_id ? currentUser.patient_profile_id : 1;
+  const initialPat = PATIENTS.find(p => p.id === initialPatientId) || PATIENTS[0];
   const [selectedPatientId, setSelectedPatientId] = useState<number>(initialPatientId);
-  const [gameMode, setGameMode] = useState<GameMode>('Upper-Limb Fruit Reach');
+  const [gameMode, setGameMode] = useState<GameMode>(initialPat.defaultGame);
   const [controlType, setControlType] = useState<ControlType>('mouse');
   const [webcamError, setWebcamError] = useState<string | null>(null);
 

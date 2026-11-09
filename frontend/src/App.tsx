@@ -3,7 +3,6 @@ import { AuthModule } from './modules/auth/AuthModule';
 import { PrescriptionModule } from './modules/prescription/PrescriptionModule';
 import { LibraryModule } from './modules/library/LibraryModule';
 import { GameModule } from './modules/game/GameModule';
-import { LoggerModule } from './modules/logger/LoggerModule';
 import { AnalyticsModule } from './modules/analytics/AnalyticsModule';
 import { AuthUser } from './types';
 
@@ -17,7 +16,7 @@ export const App: React.FC = () => {
     avatar_url: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150',
   });
 
-  const [activeTab, setActiveTab] = useState<'prescription' | 'library' | 'game' | 'logger' | 'analytics'>('prescription');
+  const [activeTab, setActiveTab] = useState<'prescription' | 'library' | 'game' | 'analytics'>('prescription');
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -94,13 +93,6 @@ export const App: React.FC = () => {
           </button>
 
           <button
-            className={`nav-tab-btn ${activeTab === 'logger' ? 'active' : ''}`}
-            onClick={() => setActiveTab('logger')}
-          >
-            {isPatient ? '📝 Log My Pain & Sets' : '🩺 Activity & Vital Logs'}
-          </button>
-
-          <button
             className={`nav-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
@@ -170,7 +162,6 @@ export const App: React.FC = () => {
         )}
         {activeTab === 'library' && <LibraryModule currentUser={currentUser} />}
         {activeTab === 'game' && <GameModule currentUser={currentUser} />}
-        {activeTab === 'logger' && <LoggerModule />}
         {activeTab === 'analytics' && (
           <AnalyticsModule
             currentUser={currentUser}

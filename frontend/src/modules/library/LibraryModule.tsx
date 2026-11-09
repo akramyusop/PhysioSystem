@@ -282,6 +282,123 @@ const FALLBACK_CATALOG: ExerciseWithMedia[] = [
       },
     ],
   },
+  {
+    id: 5,
+    name: 'Upper-Limb Fruit Reach (Rehab Game)',
+    description:
+      'Webcam motion-tracked gamified reach-and-grasp exercise. Grab glowing fruit at multiple Range-of-Motion angles to train neuroplasticity and shoulder ROM.',
+    target_body_part: 'Shoulder Abduction & Hand-Eye Coordination',
+    difficulty: 'easy',
+    recommended_frequency: '1x daily (8 reps)',
+    media_assets: [
+      {
+        id: 5,
+        exercise_id: 5,
+        asset_type: 'video',
+        url: 'https://youtu.be/HscSsKwohoQ',
+        title: 'Upper-Limb Fruit Reach Gameplay Guide',
+        thumbnail_url: 'https://img.youtube.com/vi/HscSsKwohoQ/hqdefault.jpg',
+      },
+    ],
+    step_guides: [
+      {
+        stepNumber: 1,
+        title: 'Camera Positioning',
+        instruction: 'Position your webcam 4-6 feet away so your upper torso and both arms are clearly visible.',
+        postureTip: 'Ensure good lighting with no strong backlighting directly behind you.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Target Calibration',
+        instruction: 'Stand or sit upright with shoulders relaxed. Raise arms to touch the initial calibration marker.',
+        postureTip: 'Keep your neck and chest upright without hunching forward.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Dynamic Reaching',
+        instruction: 'Reach smoothly towards appearing fruit targets within your comfortable range of motion.',
+        postureTip: 'Do not fling or jerk your arm; controlled velocity provides the best neuro-muscular activation.',
+      },
+    ],
+  },
+  {
+    id: 6,
+    name: 'Sky Glider Trajectory (Rehab Game)',
+    description:
+      'Biofeedback flight simulator. Steer virtual glider through golden trajectory rings using vertical limb movements to dampen ataxia and build endurance.',
+    target_body_part: 'Upper Extremity & Trunk Stability',
+    difficulty: 'medium',
+    recommended_frequency: '1x daily (6 reps)',
+    media_assets: [
+      {
+        id: 6,
+        exercise_id: 6,
+        asset_type: 'video',
+        url: 'https://youtu.be/zY5nq68IxwA',
+        title: 'Sky Glider Trajectory Flight Guide',
+        thumbnail_url: 'https://img.youtube.com/vi/zY5nq68IxwA/hqdefault.jpg',
+      },
+    ],
+    step_guides: [
+      {
+        stepNumber: 1,
+        title: 'Flight Stance',
+        instruction: 'Sit or stand evenly balanced with both feet flat on the floor.',
+        postureTip: 'Align ears over shoulders; avoid leaning the torso sideways.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Altitude Control',
+        instruction: 'Elevate your arm to guide the glider upward and lower gently to bring it down through the rings.',
+        postureTip: 'Maintain smooth breathing throughout each flight maneuver.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Level Flight Hold',
+        instruction: 'Hold the neutral horizon line between target gates to train trunk and shoulder isometric control.',
+        postureTip: 'Engage your core gently to stabilize your torso.',
+      },
+    ],
+  },
+  {
+    id: 7,
+    name: 'Neural Hold Stabilizer (Rehab Game)',
+    description:
+      'Isometric stabilization game. Hold virtual limb steady inside neural energy rings until 100% charged to build joint proprioception and steadiness.',
+    target_body_part: 'Joint Proprioception & Isometric Hold',
+    difficulty: 'easy',
+    recommended_frequency: '2x daily (5 holds)',
+    media_assets: [
+      {
+        id: 7,
+        exercise_id: 7,
+        asset_type: 'video',
+        url: 'https://youtu.be/yxmPWykyov4',
+        title: 'Neural Hold Stabilizer Clinic Guide',
+        thumbnail_url: 'https://img.youtube.com/vi/yxmPWykyov4/hqdefault.jpg',
+      },
+    ],
+    step_guides: [
+      {
+        stepNumber: 1,
+        title: 'Target Ring Acquisition',
+        instruction: 'Move your hand smoothly into the glowing stabilization ring displayed on the screen.',
+        postureTip: 'Keep your wrist neutral and relaxed without clenching your fist.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Isometric Charge Hold',
+        instruction: 'Maintain position inside the perimeter ring for 5 seconds until the charge meter fills.',
+        postureTip: 'Avoid tremor by focusing on steady, rhythmic exhalations.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Controlled Rest',
+        instruction: 'Return arm to neutral resting position for 3 seconds before acquiring the next stabilizer gate.',
+        postureTip: 'Completely relax your shoulder blade between holds.',
+      },
+    ],
+  },
 ];
 
 const FALLBACK_PATIENTS: PatientOption[] = [

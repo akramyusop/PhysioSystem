@@ -18,13 +18,19 @@ INSERT OR IGNORE INTO exercises (id, name, description, target_body_part, diffic
 (1, 'Quadriceps Isometric Set', 'Tighten your thigh muscles while keeping your leg straight on the mat. Hold for 5 seconds.', 'Knee / Quadriceps', 'easy', '3x daily'),
 (2, 'Heel Slides with Strap', 'Slowly slide your heel toward your buttocks, bending your knee as far as comfortable.', 'Knee / Hamstring', 'medium', '2x daily'),
 (3, 'Shoulder Pendulum Swing', 'Lean forward holding a table with your good arm. Let your injured arm hang and gently swing in circles.', 'Shoulder', 'easy', '3x daily'),
-(4, 'Wall Angels', 'Stand with back and elbows against the wall, slide arms upward maintaining contact.', 'Upper Back & Shoulder', 'medium', '1x daily');
+(4, 'Wall Angels', 'Stand with back and elbows against the wall, slide arms upward maintaining contact.', 'Upper Back & Shoulder', 'medium', '1x daily'),
+(5, 'Upper-Limb Fruit Reach (Rehab Game)', 'Webcam motion-tracked gamified reach-and-grasp exercise. Grab glowing fruit at multiple Range-of-Motion angles to train neuroplasticity and shoulder ROM.', 'Shoulder Abduction & Hand-Eye Coordination', 'easy', '1x daily (8 reps)'),
+(6, 'Sky Glider Trajectory (Rehab Game)', 'Biofeedback flight simulator. Steer virtual glider through golden trajectory rings using vertical limb movements to dampen ataxia and build endurance.', 'Upper Extremity & Trunk Stability', 'medium', '1x daily (6 reps)'),
+(7, 'Neural Hold Stabilizer (Rehab Game)', 'Isometric stabilization game. Hold virtual limb steady inside neural energy rings until 100% charged to build joint proprioception and steadiness.', 'Joint Proprioception & Isometric Hold', 'easy', '2x daily (5 holds)');
 
 INSERT OR IGNORE INTO media_assets (id, exercise_id, asset_type, url, title, thumbnail_url) VALUES
 (1, 1, 'video', 'https://youtu.be/HscSsKwohoQ?si=RZ5ayjgvD13cVYp1', 'Quadriceps Isometrics Clinic Tutorial', 'https://img.youtube.com/vi/HscSsKwohoQ/hqdefault.jpg'),
 (2, 2, 'video', 'https://youtu.be/yxmPWykyov4?si=-rcCPlKPERoT3HVc', 'Heel Slides with Strap Tutorial', 'https://img.youtube.com/vi/yxmPWykyov4/hqdefault.jpg'),
 (3, 3, 'video', 'https://youtu.be/zY5nq68IxwA?si=lMe96uvUW6CcaDxf&t=20', 'Shoulder Pendulum Swing Tutorial', 'https://img.youtube.com/vi/zY5nq68IxwA/hqdefault.jpg'),
-(4, 4, 'video', 'https://youtu.be/Qlan0IApO7o?si=OjWqXDcMd_TWZ2FM', 'Wall Angels Posture Tutorial', 'https://img.youtube.com/vi/Qlan0IApO7o/hqdefault.jpg');
+(4, 4, 'video', 'https://youtu.be/Qlan0IApO7o?si=OjWqXDcMd_TWZ2FM', 'Wall Angels Posture Tutorial', 'https://img.youtube.com/vi/Qlan0IApO7o/hqdefault.jpg'),
+(5, 5, 'video', 'https://youtu.be/HscSsKwohoQ', 'Upper-Limb Fruit Reach Gameplay Guide', 'https://img.youtube.com/vi/HscSsKwohoQ/hqdefault.jpg'),
+(6, 6, 'video', 'https://youtu.be/zY5nq68IxwA', 'Sky Glider Trajectory Flight Guide', 'https://img.youtube.com/vi/zY5nq68IxwA/hqdefault.jpg'),
+(7, 7, 'video', 'https://youtu.be/yxmPWykyov4', 'Neural Hold Stabilizer Clinic Guide', 'https://img.youtube.com/vi/yxmPWykyov4/hqdefault.jpg');
 
 -- 4. TREATMENT PLANS & PRESCRIBED EXERCISES
 INSERT OR IGNORE INTO treatment_plans (id, patient_id, doctor_id, title, status, start_date, end_date) VALUES
@@ -34,7 +40,10 @@ INSERT OR IGNORE INTO treatment_plans (id, patient_id, doctor_id, title, status,
 INSERT OR IGNORE INTO prescribed_exercises (id, plan_id, exercise_id, sets, reps, hold_seconds, daily_frequency, safety_notes, order_index) VALUES
 (1, 1, 1, 3, 10, 5, 3, 'Stop if sharp knee pain exceeds 4/10.', 1),
 (2, 1, 2, 3, 12, 0, 2, 'Use smooth gliding motions. Do not force flexion.', 2),
-(3, 2, 3, 2, 15, 0, 3, 'Keep arm completely relaxed; momentum drives the swing.', 1);
+(3, 2, 3, 2, 15, 0, 3, 'Keep arm completely relaxed; momentum drives the swing.', 1),
+(20, 1, 5, 2, 8, 0, 1, 'Webcam motion tracking: Reach for glowing fruits at comfortable elevation.', 5),
+(21, 2, 6, 2, 6, 0, 1, 'Webcam motion tracking: Guide glider through flight rings with smooth shoulder lifts.', 2),
+(22, 3, 7, 2, 5, 5, 2, 'Isometric neural hold: Hold limb inside target ring to complete stabilizer charge.', 4);
 
 -- 5. REHAB GAME SESSIONS & HIGH SCORES
 INSERT OR IGNORE INTO game_sessions (id, patient_id, exercise_id, game_type, duration_seconds, score, accuracy_percentage) VALUES
