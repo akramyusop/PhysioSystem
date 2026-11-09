@@ -1952,7 +1952,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                       <p className={`mod5-notes-quote ${log.voided ? 'mod5-voided-text' : ''}`}>{log.notes}</p>
                     )}
 
-                    {log.voided && log.void_reason && (
+                    {Boolean(log.voided && log.void_reason) && (
                       <div className="mod5-audit-note">
                         ⚠️ <strong>Medical Audit Note:</strong> {log.void_reason}
                       </div>
@@ -2042,7 +2042,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                     <p className={`mod5-notes-quote ${v.voided ? 'mod5-voided-text' : ''}`}>{v.clinical_remarks}</p>
                   )}
 
-                  {v.voided && v.void_reason && (
+                  {Boolean(v.voided && v.void_reason) && (
                     <div className="mod5-audit-note">
                       ⚠️ <strong>Medical Audit Note:</strong> {v.void_reason}
                     </div>
