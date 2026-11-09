@@ -183,8 +183,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
       (currentUser?.username?.toLowerCase().includes('test') && p.id === 'PT-004')
   ) || patients[0];
 
-  // Shift Handover Scope (controls active shift window vs unlimited historical archive)
-  const [shiftScope, setShiftScope] = useState<'current' | 'today' | 'all'>('current');
+
 
   // Patient Self-Logging State (Log Pain and Sets)
   const [patientPain, setPatientPain] = useState<number>(2);
@@ -1038,27 +1037,35 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
     }
   };
 
-  // Helper to determine if a record falls into current shift window
-  const isWithinShift = (logTime?: string, id?: number) => {
-    if (shiftScope === 'all') return true;
-    if (id && id > 1700000000000) {
-      const hoursAgo = (Date.now() - id) / (1000 * 60 * 60);
-      if (shiftScope === 'current') return hoursAgo <= 8;
-      if (shiftScope === 'today') return hoursAgo <= 24;
+  // Helper to strictly match patient IDs across various representations (PT-001, 1, full name)
+  const matchesPatient = (entryPatientId: string | number, targetId: string) => {
+    if (!targetId || targetId === 'all') return true;
+    const eStr = String(entryPatientId).toLowerCase().trim();
+    const tStr = String(targetId).toLowerCase().trim();
+    if (eStr === tStr) return true;
+    // Normalize PT-001 vs 1
+    const eNum = eStr.replace('pt-', '').replace(/^0+/, '');
+    const tNum = tStr.replace('pt-', '').replace(/^0+/, '');
+    if (eNum && tNum && eNum === tNum) return true;
+    // Check patient item by name
+    const pObj = patients.find((p) => p.id.toLowerCase() === tStr || p.name.toLowerCase() === tStr);
+    if (pObj) {
+      if (eStr === pObj.id.toLowerCase() || eStr === pObj.name.toLowerCase()) return true;
     }
-    // Simple time strings (e.g. 09:30 AM) logged during active shift
-    if (logTime && logTime.includes(':') && !logTime.includes('-')) return true;
     return false;
   };
 
-  // Filtered feeds according to patient and active shift window
-  const filteredActivities = activities
-    .filter((a) => !patientFilter || a.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
-    .filter((a) => isWithinShift(a.logged_at, a.id));
+  const handleSelectPatient = (id: string) => {
+    setPatientFilter(id);
+    if (id) {
+      setActForm((prev) => ({ ...prev, patient_id: id }));
+      setVitalForm((prev) => ({ ...prev, patient_id: id }));
+    }
+  };
 
-  const filteredVitals = vitals
-    .filter((v) => !patientFilter || v.patient_id.toLowerCase().includes(patientFilter.toLowerCase()))
-    .filter((v) => isWithinShift(v.recorded_at, v.id));
+  // Filtered feeds strictly isolated to the selected patient (or all if empty)
+  const filteredActivities = activities.filter((a) => matchesPatient(a.patient_id, patientFilter));
+  const filteredVitals = vitals.filter((v) => matchesPatient(v.patient_id, patientFilter));
 
   const selectedActPatient = patients.find((p) => p.id === actForm.patient_id);
   const selectedVitPatient = patients.find((p) => p.id === vitalForm.patient_id);
@@ -1427,29 +1434,19 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
             </button>
           </div>
 
-          {/* Shift Handover Window Selector */}
-          <select
-            value={shiftScope}
-            onChange={(e) => setShiftScope(e.target.value as any)}
-            className="mod5-shift-select"
-            title="Select nursing shift window for handover documentation"
-          >
-            <option value="current">Active Shift (8h Window)</option>
-            <option value="today">Today's Cycle (24h)</option>
-            <option value="all">Full Archive (Unlimited History)</option>
-          </select>
 
-          {/* Patient Filter */}
+
+          {/* Patient Filter Dropdown */}
           <select
             value={patientFilter}
-            onChange={(e) => setPatientFilter(e.target.value)}
+            onChange={(e) => handleSelectPatient(e.target.value)}
             className="mod5-filter-input"
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', fontWeight: 700 }}
           >
-            <option value="">All Ward Patients ({patients.length})</option>
+            <option value="">👥 All Ward Patients ({patients.length})</option>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
-                Filter: {p.id} — {p.name}
+                Focus: {p.id} — {p.name}
               </option>
             ))}
           </select>
@@ -1463,23 +1460,42 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
         </div>
       </div>
 
-      {/* Shift Handover Scope & Archive Banner */}
-      <div className="mod5-shift-banner">
-        <div>
-          <strong style={{ color: '#2dd4bf' }}>📋 Nursing Shift Handover Window:</strong>{' '}
-          <span>
-            {shiftScope === 'current'
-              ? 'Active 8-Hour Ward Shift'
-              : shiftScope === 'today'
-              ? "Today's Full 24-Hour Shift Cycle"
-              : 'Full Historical Clinical Archive'}
-          </span>
-          <span style={{ color: '#94a3b8', marginLeft: '0.6rem' }}>
-            ({filteredActivities.length} activities, {filteredVitals.length} vitals included)
+      {/* Patient Divide / Focus Bar */}
+      <div className="mod5-patient-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
+            👤 Patient Records View:
           </span>
         </div>
-        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-          💡 SQLite retains <strong style={{ color: '#ffffff' }}>unlimited total history</strong> • Handover window keeps shift dossiers concise
+
+        <div className="mod5-patient-pills">
+          <button
+            type="button"
+            onClick={() => handleSelectPatient('')}
+            className={`mod5-patient-pill ${!patientFilter ? 'active' : ''}`}
+            title="Display all patients in the ward"
+          >
+            <span>👥 All Patients</span>
+            <span className="mod5-pill-count">{activeTab === 'activity' ? activities.length : vitals.length}</span>
+          </button>
+          {patients.map((p) => {
+            const count = activeTab === 'activity'
+              ? activities.filter((a) => matchesPatient(a.patient_id, p.id)).length
+              : vitals.filter((v) => matchesPatient(v.patient_id, p.id)).length;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleSelectPatient(p.id)}
+                className={`mod5-patient-pill ${patientFilter === p.id ? 'active' : ''}`}
+                title={`Focus chart strictly on ${p.name}`}
+              >
+                <PatientAvatar size="sm" patientId={p.id} patientName={p.name} avatarUrl={p.avatar_url} />
+                <span>{p.name}</span>
+                <span className="mod5-pill-count">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1861,6 +1877,28 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
 
         {/* Right Column: Feed / History */}
         <div className="mod5-feed">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid #334155' }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {activeTab === 'activity' ? 'Rehab Activity History' : 'Vital Signs & NEWS2 History'}
+              </span>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: '0.15rem 0 0 0' }}>
+                {patientFilter
+                  ? `Showing Only: ${patients.find((p) => p.id === patientFilter)?.name || patientFilter} (${activeTab === 'activity' ? filteredActivities.length : filteredVitals.length} records)`
+                  : `All Ward Records (${activeTab === 'activity' ? filteredActivities.length : filteredVitals.length} total)`}
+              </h3>
+            </div>
+            {patientFilter && (
+              <button
+                type="button"
+                onClick={() => handleSelectPatient('')}
+                style={{ fontSize: '0.78rem', color: '#38bdf8', background: 'transparent', border: '1px solid #0284c7', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                ✕ Show All
+              </button>
+            )}
+          </div>
+
           {activeTab === 'activity' ? (
             filteredActivities.length === 0 ? (
               <div className="mod5-empty">
