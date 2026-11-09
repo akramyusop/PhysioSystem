@@ -418,6 +418,22 @@ const FALLBACK_PATIENTS: PatientOption[] = [
     baseline_rom_score: 45.0,
     notes: 'Stage 2 freezing phase. Moderate stiffness, avoid forced abduction.',
   },
+  {
+    patient_id: 3,
+    user_id: 5,
+    full_name: 'Alex San',
+    injury_diagnosis: 'Lower Back Lumbar Strain',
+    baseline_rom_score: 15.0,
+    notes: 'Focus on posture alignment, gentle mobility, and avoiding lumbar hyperextension.',
+  },
+  {
+    patient_id: 4,
+    user_id: 6,
+    full_name: 'Test Patient',
+    injury_diagnosis: 'Lumbar Disc Herniation',
+    baseline_rom_score: 65.0,
+    notes: 'Progressive stabilization and postural endurance program.',
+  },
 ];
 
 // Helper to breakdown media assets clearly (e.g. "🎬 1 Clinical Video • 📋 5 Step Routine")
@@ -638,7 +654,7 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
           media_assets: ex2.media_assets,
         },
       ]);
-    } else {
+    } else if (patientId === 2) {
       const ex3 = currentCatalog.find(e => e.id === 3) || FALLBACK_CATALOG[2];
       setGuidedItems([
         {
@@ -659,6 +675,92 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
           safety_notes: 'Keep arm completely relaxed; momentum drives the swing.',
           order_index: 1,
           media_assets: ex3.media_assets,
+        },
+      ]);
+    } else if (patientId === 3) {
+      const ex1 = currentCatalog.find(e => e.id === 1) || FALLBACK_CATALOG[0];
+      const ex2 = currentCatalog.find(e => e.id === 2) || FALLBACK_CATALOG[1];
+      const ex4 = currentCatalog.find(e => e.id === 4) || FALLBACK_CATALOG[3];
+      setGuidedItems([
+        {
+          prescribed_id: 6,
+          plan_id: 3,
+          plan_title: 'ACL & Lumbar Stabilization Protocol',
+          doctor_name: 'Dr. Sarah Chen, MD',
+          exercise_id: ex1.id,
+          exercise_name: ex1.name,
+          description: ex1.description,
+          target_body_part: ex1.target_body_part,
+          difficulty: ex1.difficulty,
+          recommended_frequency: ex1.recommended_frequency,
+          sets: 3,
+          reps: 10,
+          hold_seconds: 5,
+          daily_frequency: 3,
+          safety_notes: 'Keep knee straight; halt if sharp patellar pain exceeds 3/10.',
+          order_index: 1,
+          media_assets: ex1.media_assets,
+        },
+        {
+          prescribed_id: 7,
+          plan_id: 3,
+          plan_title: 'ACL & Lumbar Stabilization Protocol',
+          doctor_name: 'Dr. Sarah Chen, MD',
+          exercise_id: ex2.id,
+          exercise_name: ex2.name,
+          description: ex2.description,
+          target_body_part: ex2.target_body_part,
+          difficulty: ex2.difficulty,
+          recommended_frequency: ex2.recommended_frequency,
+          sets: 3,
+          reps: 12,
+          hold_seconds: 0,
+          daily_frequency: 2,
+          safety_notes: 'Use strap for assistance. Do not force flexion beyond 90° in weeks 1-4.',
+          order_index: 2,
+          media_assets: ex2.media_assets,
+        },
+        {
+          prescribed_id: 8,
+          plan_id: 3,
+          plan_title: 'ACL & Lumbar Stabilization Protocol',
+          doctor_name: 'Dr. Sarah Chen, MD',
+          exercise_id: ex4.id,
+          exercise_name: ex4.name,
+          description: ex4.description,
+          target_body_part: ex4.target_body_part,
+          difficulty: ex4.difficulty,
+          recommended_frequency: ex4.recommended_frequency,
+          sets: 3,
+          reps: 10,
+          hold_seconds: 0,
+          daily_frequency: 1,
+          safety_notes: 'Keep lower back flat against the wall.',
+          order_index: 3,
+          media_assets: ex4.media_assets,
+        },
+      ]);
+    } else {
+      const ex4 = currentCatalog.find(e => e.id === 4) || FALLBACK_CATALOG[3];
+      setGuidedItems([
+        {
+          prescribed_id: 9,
+          plan_id: 4,
+          plan_title: 'Postural Alignment & Back Care',
+          doctor_name: 'Dr. Sarah Chen, MD',
+          exercise_id: ex4.id,
+          exercise_name: ex4.name,
+          description: ex4.description,
+          target_body_part: ex4.target_body_part,
+          difficulty: ex4.difficulty,
+          recommended_frequency: ex4.recommended_frequency,
+          sets: 2,
+          reps: 10,
+          hold_seconds: 2,
+          daily_frequency: 2,
+          safety_notes: 'Move slowly with steady breathing; avoid lumbar overarching.',
+          order_index: 1,
+          media_assets: ex4.media_assets,
         },
       ]);
     }
@@ -1030,25 +1132,8 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
           </p>
         </div>
 
-        {/* Role View Switcher or Locked Patient Badge */}
-        {currentUser?.role === 'patient' ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              background: '#ecfdf5',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '999px',
-              border: '1px solid #a7f3d0',
-              color: '#065f46',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-            }}
-          >
-            <span>🏃 Patient Guidance Mode</span>
-          </div>
-        ) : (
+        {/* Role View Switcher (only shown for Doctor / Clinician or standalone demo) */}
+        {currentUser?.role !== 'patient' && (
           <div
             style={{
               display: 'flex',
@@ -1162,36 +1247,8 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
               </p>
             </div>
 
-            {/* Profile info: Patient only sees own record; Doctor/Clinician can select patient */}
-            {currentUser?.role === 'patient' ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  padding: '0.45rem 0.85rem',
-                  background: '#f1f5f9',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                }}
-              >
-                {currentUser.avatar_url && (
-                  <img
-                    src={currentUser.avatar_url}
-                    alt={currentUser.full_name}
-                    style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
-                )}
-                <div>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>
-                    Assigned Patient:
-                  </span>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
-                    {currentUser.full_name}
-                  </span>
-                </div>
-              </div>
-            ) : (
+            {/* Doctor / Clinician can select patient to preview; hidden for logged-in patients */}
+            {currentUser?.role !== 'patient' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
                   Viewing Patient:
@@ -2003,25 +2060,6 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
                   <span className="tag" style={getDifficultyStyle(selectedExercise.difficulty)}>
                     {selectedExercise.difficulty.toUpperCase()}
                   </span>
-                  {matchingPrescription && (
-                    <span
-                      style={{
-                        background: '#fef3c7',
-                        color: '#92400e',
-                        border: '1px solid #fde68a',
-                        fontWeight: 700,
-                        fontSize: '0.75rem',
-                        padding: '0.2rem 0.55rem',
-                        borderRadius: '999px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                      }}
-                    >
-                      <span>📋</span>
-                      <span>Prescribed to {activePatient.full_name}</span>
-                    </span>
-                  )}
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#0284c7', fontWeight: 600, marginTop: '0.25rem' }}>
                   🎯 Target Anatomy: {selectedExercise.target_body_part} • 🔄 Recommended Routine:{' '}
