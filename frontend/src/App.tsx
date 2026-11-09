@@ -170,7 +170,7 @@ export const App: React.FC = () => {
         )}
         {activeTab === 'library' && <LibraryModule currentUser={currentUser} />}
         {activeTab === 'game' && <GameModule currentUser={currentUser} />}
-        {activeTab === 'logger' && <LoggerModule />}
+        {activeTab === 'logger' && <LoggerModule currentUser={currentUser} />}
         {activeTab === 'analytics' && (
           <AnalyticsModule
             currentUser={currentUser}
