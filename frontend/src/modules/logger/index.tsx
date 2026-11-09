@@ -599,7 +599,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
     document.body.removeChild(link);
   };
 
-  // --- Feature 6: Dedicated Medical Print Handover Report ---
+  // --- Feature 6: Dedicated Medical Print Handover Report (Option A: 24-Hour Shift Focus) ---
   const handlePrintHandover = () => {
     const escapeHtml = (str: string = '') =>
       str
@@ -609,7 +609,8 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 
-    const generatedAt = new Date().toLocaleString('en-US', {
+    const now = new Date();
+    const generatedAt = now.toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'medium',
     });
@@ -617,6 +618,30 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
     const activePatientObj = patientFilter
       ? patients.find((p) => p.id.toLowerCase() === patientFilter.toLowerCase())
       : null;
+
+    // Shift Handover Scope: Filter to current shift / today (last 24 hours)
+    const isWithinCurrentShift = (dateStr?: string) => {
+      if (!dateStr) return false;
+      try {
+        const d = new Date(dateStr.replace(' ', 'T'));
+        if (isNaN(d.getTime())) return false;
+        const diffHours = (now.getTime() - d.getTime()) / (1000 * 60 * 60);
+        const isSameDate = d.toDateString() === now.toDateString();
+        return isSameDate || (diffHours >= 0 && diffHours <= 24);
+      } catch {
+        return false;
+      }
+    };
+
+    const shiftActivities = filteredActivities.filter((a) => isWithinCurrentShift(a.logged_at));
+    const shiftVitals = filteredVitals.filter((v) => isWithinCurrentShift(v.recorded_at));
+
+    // Latest known observations for immediate clinical stability assessment
+    const latestVital = filteredVitals.length > 0 ? filteredVitals[0] : null;
+    const latestNews2 = latestVital
+      ? latestVital.news2_score ?? calculateNews2(latestVital.bp_systolic, latestVital.heart_rate, latestVital.spo2, latestVital.temperature_c)
+      : null;
+    const totalShiftMins = shiftActivities.reduce((acc, a) => acc + (a.duration_minutes || 0), 0);
 
     const patientHeaderHtml = activePatientObj
       ? `
@@ -632,7 +657,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
             </div>
             <div>
               <div class="patient-label">Handover Scope</div>
-              <div class="patient-val">Single Patient Shift Dossier</div>
+              <div class="patient-val" style="color: #0284c7; font-weight: 700;">Current Shift (Past 24 Hours)</div>
             </div>
             <div style="grid-column: span 3; margin-top: 4px;">
               <div class="patient-label">Clinical Diagnosis / Reason for Admission</div>
@@ -646,25 +671,69 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
           <div class="patient-grid">
             <div>
               <div class="patient-label">Handover Scope</div>
-              <div class="patient-val">All Ward Patients (${patients.length} Active Profiles)</div>
+              <div class="patient-val">All Ward Patients (${patients.length} Active Profiles) • Current Shift</div>
             </div>
             <div>
-              <div class="patient-label">Activity Sessions Included</div>
-              <div class="patient-val">${filteredActivities.length} Sessions Logged</div>
+              <div class="patient-label">Shift Activities (Today)</div>
+              <div class="patient-val">${shiftActivities.length} Sessions Logged</div>
             </div>
             <div>
-              <div class="patient-label">Vitals Records Included</div>
-              <div class="patient-val">${filteredVitals.length} Vitals Recorded</div>
+              <div class="patient-label">Shift Vitals (Today)</div>
+              <div class="patient-val">${shiftVitals.length} Vitals Recorded</div>
             </div>
           </div>
         </div>
       `;
 
-    // Activity Table Rows
+    // Executive Handover Summary Box
+    const executiveSummaryHtml = `
+      <div style="background: #f8fafc; border: 1.5px solid #0284c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px;">
+          <span style="font-weight: 800; font-size: 9.5pt; color: #0369a1; text-transform: uppercase; letter-spacing: 0.05em;">
+            ⚡ Executive Shift Handover Summary (Active 24-Hour Window)
+          </span>
+          <span style="font-size: 8.5pt; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px;">
+            ${activePatientObj ? `Patient: ${escapeHtml(activePatientObj.name)}` : 'Ward Handover Dossier'}
+          </span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 9pt;">
+          <div>
+            <div style="font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 600;">Latest Vitals (Stability)</div>
+            <div style="font-weight: 800; font-size: 11pt; color: #0f172a;">${latestVital ? `${latestVital.bp_systolic}/${latestVital.bp_diastolic} mmHg` : 'Not recorded'}</div>
+            <div style="font-size: 7.5pt; color: #64748b;">${latestVital ? `${latestVital.heart_rate} bpm • ${latestVital.spo2}% SpO2` : 'No observations'}</div>
+          </div>
+          <div>
+            <div style="font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 600;">Clinical Risk Status</div>
+            <div style="margin-top: 3px;">
+              ${latestNews2 !== null
+                ? (latestNews2 >= 5
+                    ? `<span class="badge badge-alert" style="font-size: 8pt;">NEWS2: ${latestNews2} (Alert)</span>`
+                    : `<span class="badge badge-normal" style="font-size: 8pt;">NEWS2: ${latestNews2} (Stable)</span>`)
+                : `<span class="badge badge-normal" style="font-size: 8pt;">Stable</span>`}
+            </div>
+            <div style="font-size: 7.5pt; color: #64748b; margin-top: 2px;">${latestVital ? `Temp: ${latestVital.temperature_c}°C` : ''}</div>
+          </div>
+          <div>
+            <div style="font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 600;">Shift Rehab Dosage</div>
+            <div style="font-weight: 800; font-size: 11pt; color: #0f172a;">${shiftActivities.length} Sessions (${totalShiftMins} mins)</div>
+            <div style="font-size: 7.5pt; color: #64748b;">Completed during this shift</div>
+          </div>
+          <div>
+            <div style="font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 600;">Shift Pain Status</div>
+            <div style="font-weight: 800; font-size: 11pt; color: #0284c7;">
+              ${latestVital ? `${latestVital.pain_score}/10 (VAS)` : 'None reported'}
+            </div>
+            <div style="font-size: 7.5pt; color: #64748b;">Current pain level</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Activity Table Rows (Filtered to Shift)
     const activityRowsHtml =
-      filteredActivities.length === 0
-        ? `<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 14px;">No rehabilitation activity sessions recorded for this handover scope.</td></tr>`
-        : filteredActivities
+      shiftActivities.length === 0
+        ? `<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 18px; font-style: italic;">No rehabilitation activity sessions recorded in the current shift cycle (Last 24 Hours).</td></tr>`
+        : shiftActivities
             .map((a) => {
               const p = patients.find((pat) => pat.id === a.patient_id);
               const pDisplay = p ? `${escapeHtml(p.name)} (${escapeHtml(a.patient_id)})` : escapeHtml(a.patient_id);
@@ -690,11 +759,11 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
             })
             .join('');
 
-    // Vital Table Rows
+    // Vital Table Rows (Filtered to Shift)
     const vitalRowsHtml =
-      filteredVitals.length === 0
-        ? `<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 14px;">No vital sign records recorded for this handover scope.</td></tr>`
-        : filteredVitals
+      shiftVitals.length === 0
+        ? `<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 18px; font-style: italic;">No new vital signs recorded during current shift cycle (Last 24 Hours). See latest stability status in Executive Summary above.</td></tr>`
+        : shiftVitals
             .map((v) => {
               const p = patients.find((pat) => pat.id === v.patient_id);
               const pDisplay = p ? `${escapeHtml(p.name)} (${escapeHtml(v.patient_id)})` : escapeHtml(v.patient_id);
@@ -926,8 +995,10 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
 
   ${patientHeaderHtml}
 
+  ${executiveSummaryHtml}
+
   <div class="section-title">
-    <span>SECTION 1: REHABILITATION &amp; ACTIVITY LOGS (${filteredActivities.length})</span>
+    <span>SECTION 1: SHIFT REHABILITATION &amp; ACTIVITY SESSIONS (${shiftActivities.length})</span>
     <span style="font-size: 8pt; font-weight: normal; color: #64748b;">Smart Measured Metrics &amp; Patient Tolerance</span>
   </div>
   <table>
@@ -948,7 +1019,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
   </table>
 
   <div class="section-title">
-    <span>SECTION 2: VITAL SIGNS &amp; NEWS2 CLINICAL RISK SCORING (${filteredVitals.length})</span>
+    <span>SECTION 2: SHIFT VITAL SIGNS &amp; NEWS2 RISK SCORING (${shiftVitals.length})</span>
     <span style="font-size: 8pt; font-weight: normal; color: #64748b;">National Early Warning Score Assessment</span>
   </div>
   <table>
@@ -1133,7 +1204,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
           </div>
           <div className="mod5-patient-stat-card">
             <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>SUPERVISING CLINICIAN</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f1f5f9' }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
               🩺 Dr. Sarah Chen, MD
             </div>
           </div>
@@ -1167,7 +1238,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                 <select
                   value={patientExercise}
                   onChange={(e) => setPatientExercise(e.target.value)}
-                  style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', background: '#0f172a', border: '1px solid #475569', color: '#ffffff' }}
+                  style={{ width: '100%', padding: '0.55rem', borderRadius: '6px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a' }}
                 >
                   <option value="Quadriceps Isometric Set">Quadriceps Isometric Set (Knee & Quad)</option>
                   <option value="Heel Slides with Strap">Heel Slides with Strap (Flexion & Hamstring)</option>
@@ -1342,7 +1413,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                   placeholder="Tell your doctor or nurse how you felt (e.g. knee felt steady, slight pain on rep 8)..."
                   value={patientNotes}
                   onChange={(e) => setPatientNotes(e.target.value)}
-                  style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', borderRadius: '6px', background: '#0f172a', border: '1px solid #475569', color: '#ffffff' }}
+                  style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', borderRadius: '6px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#0f172a' }}
                 />
               </div>
 
@@ -1359,7 +1430,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
           {/* Right: Patient History Feed */}
           <div className="mod5-feed">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 📜 My Past Recovery Check-ins ({myLogs.length})
               </h3>
               <span style={{ fontSize: '0.75rem', color: '#38bdf8' }}>Synchronized with Clinical EHR</span>
@@ -1378,7 +1449,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                 <div key={log.id} className="mod5-patient-history-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                     <div>
-                      <strong style={{ fontSize: '0.95rem', color: '#ffffff' }}>{log.activity_type}</strong>
+                      <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{log.activity_type}</strong>
                       <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.1rem' }}>
                         🕒 {log.logged_at} • Mode: {log.assistance_level}
                       </div>
@@ -1389,7 +1460,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                   </div>
 
                   {log.notes && (
-                    <div style={{ background: '#0f172a', padding: '0.55rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#cbd5e1', border: '1px solid #334155', marginTop: '0.4rem' }}>
+                    <div style={{ background: '#f8fafc', padding: '0.55rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', color: '#334155', border: '1px solid #e2e8f0', marginTop: '0.4rem' }}>
                       {log.notes}
                     </div>
                   )}
@@ -1410,7 +1481,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
           <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#2dd4bf' }}>
             Module 5 • Rehabilitation & Clinical Tracking
           </span>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', margin: '0.25rem 0 0 0' }}>Nurse & Activity Logger</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', margin: '0.25rem 0 0 0' }}>Nurse & Activity Logger</h1>
         </div>
 
         <div className="mod5-controls">
@@ -1463,7 +1534,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
       {/* Patient Divide / Focus Bar */}
       <div className="mod5-patient-bar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
             👤 Patient Records View:
           </span>
         </div>
@@ -1549,7 +1620,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <strong style={{ fontSize: '0.9rem', color: '#ffffff' }}>{selectedActPatient.name}</strong>
+                      <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{selectedActPatient.name}</strong>
                       <span className="mod5-tag-patient">{selectedActPatient.id}</span>
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#2dd4bf', marginTop: '0.15rem' }}>
@@ -1602,7 +1673,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
               {/* Feature 5: Interactive Session Stopwatch & Duration */}
               <div className="mod5-stopwatch-box">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#f1f5f9' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0f172a' }}>
                     ⏱️ Session Stopwatch
                   </span>
                   <span className="mod5-stopwatch-display">{formatStopwatch(stopwatchSeconds)}</span>
@@ -1737,7 +1808,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <strong style={{ fontSize: '0.9rem', color: '#ffffff' }}>{selectedVitPatient.name}</strong>
+                      <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{selectedVitPatient.name}</strong>
                       <span className="mod5-tag-patient-vitals">{selectedVitPatient.id}</span>
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#a5b4fc', marginTop: '0.15rem' }}>
@@ -1882,7 +1953,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
               <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {activeTab === 'activity' ? 'Rehab Activity History' : 'Vital Signs & NEWS2 History'}
               </span>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: '0.15rem 0 0 0' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0.15rem 0 0 0' }}>
                 {patientFilter
                   ? `Showing Only: ${patients.find((p) => p.id === patientFilter)?.name || patientFilter} (${activeTab === 'activity' ? filteredActivities.length : filteredVitals.length} records)`
                   : `All Ward Records (${activeTab === 'activity' ? filteredActivities.length : filteredVitals.length} total)`}
@@ -1919,7 +1990,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                         />
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span className="mod5-tag-patient">{log.patient_id}</span>
-                          <strong className={log.voided ? 'mod5-voided-text' : ''} style={{ color: '#ffffff' }}>
+                          <strong className={log.voided ? 'mod5-voided-text' : ''} style={{ color: '#0f172a' }}>
                             {patientObj ? `${patientObj.name} • ` : ''}{log.activity_type}
                           </strong>
                         </div>
@@ -1942,7 +2013,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.75rem', color: '#cbd5e1' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.75rem', color: '#475569' }}>
                       <span>⏱️ Duration: <strong>{log.duration_minutes} mins</strong></span>
                       <span>🤝 Assistance: <strong>{log.assistance_level}</strong></span>
                       <span>👩‍⚕️ Nurse: <strong>{log.nurse_name}</strong></span>
@@ -1986,7 +2057,7 @@ export const NurseActivityLogger: React.FC<NurseActivityLoggerProps> = ({ curren
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span className="mod5-tag-patient-vitals">{v.patient_id}</span>
-                          <strong className={v.voided ? 'mod5-voided-text' : ''} style={{ color: '#ffffff' }}>
+                          <strong className={v.voided ? 'mod5-voided-text' : ''} style={{ color: '#0f172a' }}>
                             {patientObj?.name || v.patient_id}
                           </strong>
                         </div>
