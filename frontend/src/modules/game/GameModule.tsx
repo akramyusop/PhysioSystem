@@ -91,9 +91,10 @@ const GAME_CONFIGS: Record<
 
 interface GameModuleProps {
   currentUser?: AuthUser;
+  initialGameMode?: string;
 }
 
-export const GameModule: React.FC<GameModuleProps> = ({ currentUser }) => {
+export const GameModule: React.FC<GameModuleProps> = ({ currentUser, initialGameMode }) => {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [highScores, setHighScores] = useState<HighScore[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -255,6 +256,18 @@ export const GameModule: React.FC<GameModuleProps> = ({ currentUser }) => {
       maxRom: 95,
     };
   };
+
+  useEffect(() => {
+    if (
+      initialGameMode &&
+      (['Upper-Limb Fruit Reach', 'Sky Glider Trajectory', 'Neural Hold Stabilizer'] as GameMode[]).includes(
+        initialGameMode as GameMode
+      )
+    ) {
+      setGameMode(initialGameMode as GameMode);
+      resetGameState(initialGameMode as GameMode);
+    }
+  }, [initialGameMode]);
 
   const handleStartGame = () => {
     if (sessionFinished) resetGameState(gameMode);

@@ -17,6 +17,14 @@ export const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'prescription' | 'library' | 'game' | 'analytics'>('prescription');
+  const [selectedGameMode, setSelectedGameMode] = useState<string | undefined>(undefined);
+
+  const handleNavigateToGame = (gameMode?: string) => {
+    if (gameMode) {
+      setSelectedGameMode(gameMode);
+    }
+    setActiveTab('game');
+  };
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -157,16 +165,26 @@ export const App: React.FC = () => {
           <PrescriptionModule
             currentUser={currentUser}
             onNavigateToLibrary={() => setActiveTab('library')}
-            onNavigateToGame={() => setActiveTab('game')}
+            onNavigateToGame={() => handleNavigateToGame()}
           />
         )}
-        {activeTab === 'library' && <LibraryModule currentUser={currentUser} />}
-        {activeTab === 'game' && <GameModule currentUser={currentUser} />}
+        {activeTab === 'library' && (
+          <LibraryModule
+            currentUser={currentUser}
+            onNavigateToGame={handleNavigateToGame}
+          />
+        )}
+        {activeTab === 'game' && (
+          <GameModule
+            currentUser={currentUser}
+            initialGameMode={selectedGameMode}
+          />
+        )}
         {activeTab === 'analytics' && (
           <AnalyticsModule
             currentUser={currentUser}
             onNavigateToPrescription={() => setActiveTab('prescription')}
-            onNavigateToGame={() => setActiveTab('game')}
+            onNavigateToGame={() => handleNavigateToGame()}
           />
         )}
       </main>
