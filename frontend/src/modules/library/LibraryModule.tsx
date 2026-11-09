@@ -469,11 +469,34 @@ function getPostureCues(bodyPart: string): { doCue: string; dontCue: string } {
   };
 }
 
+// Helper to detect if an exercise or checklist item is a Gamified Rehabilitation Engine activity
+export const isRehabGameExercise = (ex?: { name?: string; exercise_name?: string; id?: number; exercise_id?: number } | null): boolean => {
+  if (!ex) return false;
+  const id = ex.id ?? ex.exercise_id;
+  if (id && [5, 6, 7].includes(id)) return true;
+  const name = (ex.name || ex.exercise_name || '').toLowerCase();
+  return (
+    name.includes('rehab game') ||
+    name.includes('fruit reach') ||
+    name.includes('sky glider') ||
+    name.includes('neural hold')
+  );
+};
+
+export const getMatchingGameMode = (ex?: { name?: string; exercise_name?: string } | null): string => {
+  const name = (ex?.name || ex?.exercise_name || '').toLowerCase();
+  if (name.includes('fruit reach')) return 'Upper-Limb Fruit Reach';
+  if (name.includes('sky glider')) return 'Sky Glider Trajectory';
+  if (name.includes('neural hold')) return 'Neural Hold Stabilizer';
+  return 'Upper-Limb Fruit Reach';
+};
+
 export interface LibraryModuleProps {
   currentUser?: AuthUser | null;
+  onNavigateToGame?: (gameMode?: string) => void;
 }
 
-export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => {
+export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser, onNavigateToGame }) => {
   const isDoctorUser = currentUser?.role === 'doctor' || currentUser?.role === 'nurse';
   const isPatientUser = currentUser?.role === 'patient';
 
@@ -1311,11 +1334,19 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
               {guidedItems.map((item, idx) => {
                 const isDone = !!completedChecklistIds[item.prescribed_id];
                 const isSelected = selectedExercise?.id === item.exercise_id;
+                const isGameItem = isRehabGameExercise(item);
+                const gameModeTarget = getMatchingGameMode(item);
 
                 return (
                   <div
                     key={item.prescribed_id}
-                    onClick={() => handleSelectExercise(item.exercise_id, true)}
+                    onClick={() => {
+                      if (isGameItem && onNavigateToGame) {
+                        onNavigateToGame(gameModeTarget);
+                      } else {
+                        handleSelectExercise(item.exercise_id, true);
+                      }
+                    }}
                     style={{
                       padding: '1rem',
                       borderRadius: '10px',
@@ -1376,9 +1407,25 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
                             Exercise {idx + 1}: {item.exercise_name}
                           </span>
                         </div>
-                        <span className="tag" style={getDifficultyStyle(item.difficulty)}>
-                          {item.difficulty.toUpperCase()}
-                        </span>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          {isGameItem && (
+                            <span
+                              className="tag"
+                              style={{
+                                background: '#f3e8ff',
+                                color: '#7e22ce',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                border: '1px solid #e9d5ff',
+                              }}
+                            >
+                              🎮 Rehab Game
+                            </span>
+                          )}
+                          <span className="tag" style={getDifficultyStyle(item.difficulty)}>
+                            {item.difficulty.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Prominently Highlighted Prescription Targets */}
@@ -1467,28 +1514,59 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
                       <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                         Plan: {item.plan_title} ({item.doctor_name})
                       </span>
-                      <button
-                        type="button"
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleSelectExercise(item.exercise_id, true);
-                        }}
-                        style={{
-                          padding: '0.4rem 0.85rem',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: isSelected ? '#0f172a' : '#0284c7',
-                          color: 'white',
-                          fontSize: '0.82rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                        }}
-                      >
-                        {isSelected ? '▶ Viewing Video Below' : '🎬 Watch Official Video'}
-                      </button>
+                      {isGameItem ? (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (onNavigateToGame) {
+                              onNavigateToGame(gameModeTarget);
+                            } else {
+                              handleSelectExercise(item.exercise_id, true);
+                            }
+                          }}
+                          style={{
+                            padding: '0.45rem 0.95rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                            color: 'white',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+                          }}
+                        >
+                          <span>🎮 Start Rehab Game</span>
+                          <span>➔</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleSelectExercise(item.exercise_id, true);
+                          }}
+                          style={{
+                            padding: '0.4rem 0.85rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: isSelected ? '#0f172a' : '#0284c7',
+                            color: 'white',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          {isSelected ? '▶ Viewing Video Below' : '🎬 Watch Official Video'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -1931,13 +2009,29 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
                       transition: 'all 0.15s',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem' }}>
                       <strong style={{ color: isSelected ? '#0369a1' : '#0f172a', fontSize: '0.95rem' }}>
                         {ex.name}
                       </strong>
-                      <span className="tag" style={getDifficultyStyle(ex.difficulty)}>
-                        {ex.difficulty}
-                      </span>
+                      <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexShrink: 0 }}>
+                        {isRehabGameExercise(ex) && (
+                          <span
+                            className="tag"
+                            style={{
+                              background: '#f3e8ff',
+                              color: '#7e22ce',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              border: '1px solid #e9d5ff',
+                            }}
+                          >
+                            🎮 Game
+                          </span>
+                        )}
+                        <span className="tag" style={getDifficultyStyle(ex.difficulty)}>
+                          {ex.difficulty}
+                        </span>
+                      </div>
                     </div>
 
                     <p
@@ -2067,8 +2161,8 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
                 </div>
               </div>
 
-              {/* YouTube External Link Pill */}
-              {activeMedia?.url && (
+              {/* YouTube External Link Pill (Only for physical clinical exercises) */}
+              {!isRehabGameExercise(selectedExercise) && activeMedia?.url && (
                 <a
                   href={activeMedia.url}
                   target="_blank"
@@ -2094,123 +2188,240 @@ export const LibraryModule: React.FC<LibraryModuleProps> = ({ currentUser }) => 
               )}
             </div>
 
-            {/* Video Sub-Header: Playback Controls & Video Title */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
-                <span>📹</span>
-                <span>Clinical Video Demonstration (Official Tutorial)</span>
-              </div>
-
-              {/* Playback Speed Controls for Clinical Inspection */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>⚡ Speed:</span>
-                {[0.5, 0.75, 1.0, 1.25].map(rate => (
-                  <button
-                    key={rate}
-                    type="button"
-                    onClick={() => setPlaybackRate(rate)}
-                    style={{
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: playbackRate === rate ? '#0284c7' : '#ffffff',
-                      color: playbackRate === rate ? '#ffffff' : '#475569',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {rate}x
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Hero Clinical Video Player Container */}
-            <div
-              style={{
-                background: '#000000',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                position: 'relative',
-                minHeight: '280px',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-              }}
-            >
-              {ytEmbedUrl ? (
-                <iframe
-                  key={ytEmbedUrl}
-                  src={ytEmbedUrl}
-                  title={activeMedia?.title || selectedExercise.name}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  style={{
-                    width: '100%',
-                    height: '380px',
-                    border: 'none',
-                    display: 'block',
-                    background: '#000',
-                  }}
-                />
-              ) : activeMedia?.asset_type === 'video' ? (
-                <video
-                  key={activeMedia.url}
-                  ref={videoRef}
-                  src={activeMedia.url}
-                  poster={activeMedia.thumbnail_url}
-                  controls
-                  playsInline
-                  preload="auto"
-                  style={{ width: '100%', maxHeight: '380px', display: 'block', background: '#000' }}
-                />
-              ) : (
-                <div
-                  style={{
-                    height: '300px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#94a3b8',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <span style={{ fontSize: '2rem' }}>🎬</span>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Clinical Video Loading...</span>
-                </div>
-              )}
-
-              {/* Caption Bar */}
+            {/* If selected exercise is a Gamified Rehab Activity, show the interactive Start Rehab Game Hero */}
+            {isRehabGameExercise(selectedExercise) ? (
               <div
                 style={{
-                  width: '100%',
-                  background: '#1e293b',
-                  color: '#f8fafc',
-                  padding: '0.55rem 0.95rem',
-                  fontSize: '0.82rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  boxSizing: 'border-box',
+                  background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                  borderRadius: '12px',
+                  padding: '2.5rem 1.75rem',
+                  color: '#ffffff',
+                  border: '1px solid #334155',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+                  textAlign: 'center',
+                  marginBottom: '1rem',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <span>
-                  <strong>🎬 Tutorial:</strong> {activeMedia?.title || `${selectedExercise.name} Clinical Guide`}
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
-                  Licensed Physiotherapy Demonstration
-                </span>
+                {/* Background decorative glow */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-40px',
+                    right: '-40px',
+                    width: '180px',
+                    height: '180px',
+                    background: 'radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 70%)',
+                    borderRadius: '50%',
+                    pointerEvents: 'none',
+                  }}
+                />
+
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    color: '#38bdf8',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    padding: '0.35rem 0.95rem',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    marginBottom: '1rem',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  <span>🎮 WEBCAM BIOFEEDBACK REHAB ENGINE</span>
+                </div>
+
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.7rem', fontWeight: 800, color: '#f8fafc' }}>
+                  {selectedExercise.name.replace('(Rehab Game)', '').trim()}
+                </h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.92rem', maxWidth: '580px', margin: '0 auto 1.5rem', lineHeight: 1.55 }}>
+                  {selectedExercise.description}
+                </p>
+
+                {/* Specs */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '0.85rem',
+                    flexWrap: 'wrap',
+                    marginBottom: '1.85rem',
+                  }}
+                >
+                  <div style={{ background: 'rgba(255,255,255,0.06)', padding: '0.55rem 0.95rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Motion Input</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#38bdf8' }}>📹 Webcam / Mouse Pose</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.06)', padding: '0.55rem 0.95rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Target Anatomy</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#38bdf8' }}>{selectedExercise.target_body_part}</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.06)', padding: '0.55rem 0.95rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Prescribed Routine</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#38bdf8' }}>{selectedExercise.recommended_frequency || '1x daily'}</div>
+                  </div>
+                </div>
+
+                {/* Launch Button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onNavigateToGame) {
+                        onNavigateToGame(getMatchingGameMode(selectedExercise));
+                      }
+                    }}
+                    style={{
+                      padding: '0.9rem 2.4rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                      color: '#ffffff',
+                      fontSize: '1.05rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      boxShadow: '0 4px 18px rgba(2, 132, 199, 0.45)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>🎮 Start Rehab Game</span>
+                    <span style={{ fontSize: '1.2rem' }}>➔</span>
+                  </button>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.7rem' }}>
+                    Opens the webcam-tracked game session in Module 4 with automated repetition counting
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Video Sub-Header: Playback Controls & Video Title */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                    <span>📹</span>
+                    <span>Clinical Video Demonstration (Official Tutorial)</span>
+                  </div>
+
+                  {/* Playback Speed Controls for Clinical Inspection */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>⚡ Speed:</span>
+                    {[0.5, 0.75, 1.0, 1.25].map(rate => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => setPlaybackRate(rate)}
+                        style={{
+                          padding: '0.2rem 0.5rem',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          background: playbackRate === rate ? '#0284c7' : '#ffffff',
+                          color: playbackRate === rate ? '#ffffff' : '#475569',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {rate}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hero Clinical Video Player Container */}
+                <div
+                  style={{
+                    background: '#000000',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    minHeight: '280px',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {ytEmbedUrl ? (
+                    <iframe
+                      key={ytEmbedUrl}
+                      src={ytEmbedUrl}
+                      title={activeMedia?.title || selectedExercise.name}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      style={{
+                        width: '100%',
+                        height: '380px',
+                        border: 'none',
+                        display: 'block',
+                        background: '#000',
+                      }}
+                    />
+                  ) : activeMedia?.asset_type === 'video' ? (
+                    <video
+                      key={activeMedia.url}
+                      ref={videoRef}
+                      src={activeMedia.url}
+                      poster={activeMedia.thumbnail_url}
+                      controls
+                      playsInline
+                      preload="auto"
+                      style={{ width: '100%', maxHeight: '380px', display: 'block', background: '#000' }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        height: '300px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94a3b8',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <span style={{ fontSize: '2rem' }}>🎬</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Clinical Video Loading...</span>
+                    </div>
+                  )}
+
+                  {/* Caption Bar */}
+                  <div
+                    style={{
+                      width: '100%',
+                      background: '#1e293b',
+                      color: '#f8fafc',
+                      padding: '0.55rem 0.95rem',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <span>
+                      <strong>🎬 Tutorial:</strong> {activeMedia?.title || `${selectedExercise.name} Clinical Guide`}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
+                      Licensed Physiotherapy Demonstration
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* High-Visibility Clinical Prescription & Dosage Cards */}
             <div
