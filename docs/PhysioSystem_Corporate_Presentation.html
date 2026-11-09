@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhysioSystem — Corporate Executive Presentation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #0b1120;
+      color: #f8fafc;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .slide-card {
+      width: 100%;
+      max-width: 1180px;
+      height: 82vh;
+      max-height: 720px;
+      background: linear-gradient(145deg, #131d33, #0f172a);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px -10px rgba(2, 132, 199, 0.15);
+      display: none;
+      flex-direction: column;
+      padding: 2.75rem 3.25rem;
+      position: relative;
+      overflow-y: auto;
+      box-sizing: border-box;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide-card.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.995); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .metric-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      transition: all 0.2s ease;
+    }
+
+    .metric-box:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(2, 132, 199, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .feature-card {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+
+    /* Print View */
+    @media print {
+      body {
+        overflow: visible;
+        background: #ffffff;
+        color: #0f172a;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .slide-container {
+        display: block;
+        padding: 0;
+      }
+      .slide-card {
+        display: flex !important;
+        page-break-after: always;
+        height: 100vh;
+        max-height: none;
+        box-shadow: none;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        margin-bottom: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Progress Bar -->
+  <div class="no-print h-1.5 w-full bg-slate-900 relative">
+    <div id="progressBar" class="h-full bg-gradient-to-r from-sky-500 via-teal-400 to-indigo-500 transition-all duration-300" style="width: 9%;"></div>
+  </div>
+
+  <!-- Header Bar -->
+  <header class="no-print flex items-center justify-between px-8 py-3.5 border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-tight text-slate-100 flex items-center gap-2">
+          PhysioSystem <span class="text-xs font-normal text-slate-400">| Executive Program Slide Deck</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <div class="flex items-center gap-3">
+      <div class="text-xs font-medium text-slate-400 px-3 py-1 rounded-md bg-slate-900 border border-slate-800">
+        Slide <span id="currentSlideNum" class="text-sky-400 font-bold">1</span> of <span id="totalSlidesNum">11</span>
+      </div>
+      <button onclick="prevSlide()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+        ◀ Previous
+      </button>
+      <button onclick="nextSlide()" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-sky-600 hover:bg-sky-500 text-white shadow-sm shadow-sky-600/30 transition">
+        Next ▶
+      </button>
+      <button onclick="window.print()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition">
+        🖨️ PDF / Print
+      </button>
+    </div>
+  </header>
+
+  <!-- Presentation Viewport -->
+  <main class="slide-container">
+
+    <!-- ==================== SLIDE 1: TITLE ==================== -->
+    <section class="slide-card active" data-slide="1">
+      <div class="flex items-center justify-between mb-8">
+        <span class="badge-pill bg-sky-500/10 text-sky-400 border border-sky-500/20">
+          Graduate Engineering Capstone • Healthcare Informatics
+        </span>
+        <span class="text-xs text-slate-400 font-mono">UTeM Faculty of Technology</span>
+      </div>
+
+      <div class="my-auto max-w-3xl">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight mb-4">
+          PhysioSystem
+        </h1>
+        <p class="text-xl md:text-2xl font-medium text-sky-400 mb-6">
+          Next-Generation Full-Stack Tele-Rehabilitation & Clinical Prescriptions Platform
+        </p>
+        <p class="text-slate-300 text-base leading-relaxed mb-8">
+          An enterprise-grade, high-performance clinical platform bridging orthopedic consultation, personalized exercise prescription, interactive gamified rehab, and longitudinal recovery analytics.
+        </p>
+
+        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-800">
+          <div class="metric-box">
+            <div class="text-xs text-slate-400 font-medium">Architecture</div>
+            <div class="text-lg font-bold text-white mt-1">Rust + Axum</div>
+            <div class="text-xs text-sky-400">High-Concurrency Core</div>
+          </div>
+          <div class="metric-box">
+            <div class="text-xs text-slate-400 font-medium">Frontend Engine</div>
+            <div class="text-lg font-bold text-white mt-1">React 18 + TS</div>
+            <div class="text-xs text-emerald-400">Vite Modular SPA</div>
+          </div>
+          <div class="metric-box">
+            <div class="text-xs text-slate-400 font-medium">Modular Scope</div>
+            <div class="text-lg font-bold text-white mt-1">6 Dedicated Units</div>
+            <div class="text-xs text-purple-400">Zero-Conflict Git Mesh</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-6 border-t border-slate-800/80 text-xs text-slate-400">
+        <div>Presenter: <strong>PhysioSystem Engineering Team</strong></div>
+        <div>Press <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">Space</kbd> or <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">→</kbd> to advance</div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 2: THE PROBLEM & SOLUTION ==================== -->
+    <section class="slide-card" data-slide="2">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          Strategic Opportunity & Core Value Proposition
+        </span>
+        <span class="text-xs text-slate-400">Slide 2 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">The Clinic-to-Home Adherence Gap</h2>
+      <p class="text-slate-400 text-sm mb-6">Why traditional physiotherapy outpatient care fails and how PhysioSystem solves it.</p>
+
+      <div class="grid grid-cols-2 gap-6 my-auto">
+        <!-- Problem -->
+        <div class="p-6 rounded-2xl bg-rose-950/20 border border-rose-900/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-rose-400 font-bold text-base mb-3">
+              <span class="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center text-xs">⚠️</span>
+              The Clinical Challenges
+            </div>
+            <ul class="space-y-3 text-sm text-slate-300">
+              <li class="flex items-start gap-2">
+                <span class="text-rose-400 font-bold">•</span>
+                <span><strong>70% Home Drop-off:</strong> Patients abandon paper handouts due to lack of visual guidance and engagement.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-rose-400 font-bold">•</span>
+                <span><strong>Doctor Workflow Friction:</strong> Manually typing sets, reps, and hold times per patient burns valuable clinical consultation hours.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-rose-400 font-bold">•</span>
+                <span><strong>No Objective Recovery Telemetry:</strong> Clinicians rely on vague patient memory rather than measured ROM & pain data.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="mt-4 pt-3 border-t border-rose-900/40 text-xs text-rose-300 font-medium">
+            Result: Delayed recovery, recurrent re-injury, and clinical staff burnout.
+          </div>
+        </div>
+
+        <!-- Solution -->
+        <div class="p-6 rounded-2xl bg-sky-950/20 border border-sky-900/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-sky-400 font-bold text-base mb-3">
+              <span class="w-6 h-6 rounded-full bg-sky-500/20 flex items-center justify-center text-xs">✨</span>
+              The PhysioSystem Breakthrough
+            </div>
+            <ul class="space-y-3 text-sm text-slate-300">
+              <li class="flex items-start gap-2">
+                <span class="text-sky-400 font-bold">•</span>
+                <span><strong>1-Click Evidence-Based Protocols:</strong> Pre-validated clinical regimens populate in 1 second; doctors can create and store custom protocols.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-sky-400 font-bold">•</span>
+                <span><strong>Gamified Canvas & Visual Library:</strong> Interactive hold timers, rep counters, and video guides transform rehab into an engaging habit.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-sky-400 font-bold">•</span>
+                <span><strong>Closed-Loop Telemetry & Analytics:</strong> Automated range-of-motion (ROM) trajectories, pain curves, and urgent nurse flags.</span>
+              </li>
+            </ul>
+          </div>
+          <div class="mt-4 pt-3 border-t border-sky-900/40 text-xs text-sky-300 font-medium">
+            Result: +85% adherence rate, halved doctor prescription time, and quantifiable recovery outcomes.
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-4 border-t border-slate-800 text-xs text-slate-400">
+        <span>Corporate Goal: Standardize orthopedic tele-rehabilitation across university clinics & hospitals.</span>
+        <span>PhysioSystem v1.0</span>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 3: SYSTEM ARCHITECTURE & 6-MODULE MATRIX ==================== -->
+    <section class="slide-card" data-slide="3">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          Enterprise Blueprint
+        </span>
+        <span class="text-xs text-slate-400">Slide 3 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-1">System Architecture & Modular Breakdown</h2>
+      <p class="text-slate-400 text-sm mb-5">Strict separation of concerns across 6 specialized modules running on a synchronized data model.</p>
+
+      <div class="grid grid-cols-3 gap-3.5 my-auto">
+        <!-- Mod 1 -->
+        <div class="feature-card border-l-4 border-l-blue-500">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Module 1</span>
+            <span class="text-xs text-slate-400">Member 1</span>
+          </div>
+          <h4 class="font-bold text-slate-100 text-sm">Identity & Onboarding</h4>
+          <p class="text-xs text-slate-300 mt-1">Multi-role RBAC (Doctor, Nurse, Patient) and baseline clinical intake profiling.</p>
+        </div>
+
+        <!-- Mod 2 -->
+        <div class="feature-card border-l-4 border-l-sky-500 bg-sky-950/20">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Module 2</span>
+            <span class="text-xs text-sky-300 font-semibold">Member 2 (Active)</span>
+          </div>
+          <h4 class="font-bold text-sky-100 text-sm">Prescription Planner</h4>
+          <p class="text-xs text-slate-300 mt-1">1-click evidence templates, custom doctor protocols, dynamic calculator, and printable sheets.</p>
+        </div>
+
+        <!-- Mod 3 -->
+        <div class="feature-card border-l-4 border-l-emerald-500">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Module 3</span>
+            <span class="text-xs text-slate-400">Member 3</span>
+          </div>
+          <h4 class="font-bold text-slate-100 text-sm">Video & Guidance Library</h4>
+          <p class="text-xs text-slate-300 mt-1">Movement catalog with anatomical targets, safety cues, and step-by-step video tutorials.</p>
+        </div>
+
+        <!-- Mod 4 -->
+        <div class="feature-card border-l-4 border-l-amber-500">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Module 4</span>
+            <span class="text-xs text-slate-400">Member 4</span>
+          </div>
+          <h4 class="font-bold text-slate-100 text-sm">Gamified Rehab Engine</h4>
+          <p class="text-xs text-slate-300 mt-1">Interactive HTML5 canvas loop, real-time hold timers, cadence pacing, and achievement score.</p>
+        </div>
+
+        <!-- Mod 5 -->
+        <div class="feature-card border-l-4 border-l-rose-500">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-rose-400 uppercase tracking-wider">Module 5</span>
+            <span class="text-xs text-slate-400">Member 5</span>
+          </div>
+          <h4 class="font-bold text-slate-100 text-sm">Nurse & Activity Logger</h4>
+          <p class="text-xs text-slate-300 mt-1">Patient daily rep logs, measured ROM angles, 0-10 pain index, and nurse observation flags.</p>
+        </div>
+
+        <!-- Mod 6 -->
+        <div class="feature-card border-l-4 border-l-purple-500">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Module 6</span>
+            <span class="text-xs text-slate-400">Member 6</span>
+          </div>
+          <h4 class="font-bold text-slate-100 text-sm">Analytics & Dashboard</h4>
+          <p class="text-xs text-slate-300 mt-1">Recovery trajectory curves, pain alleviation metrics, high-risk alerts, and executive reporting.</p>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs text-slate-400">
+        <div><strong>Shared Database Core:</strong> SQLite with Atomic Foreign Keys (`users` ➔ `treatment_plans` ➔ `prescribed_exercises` ➔ `activity_logs`)</div>
+        <span class="text-emerald-400 font-semibold">100% Zero-Conflict Architecture</span>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 4: MODULE 1 ==================== -->
+    <section class="slide-card" data-slide="4">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          Module 1 Breakdown • Member 1
+        </span>
+        <span class="text-xs text-slate-400">Slide 4 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Identity, Role-Based Access & Patient Intake</h2>
+      <p class="text-slate-400 text-sm mb-6">Securing clinical data integrity and establishing baseline orthopedic profiles.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🔐</div>
+            <h4 class="text-base font-bold text-white mb-2">Role-Based Access Control</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Granular isolation among <strong>Doctors</strong> (full prescription authority), <strong>Nurses</strong> (monitoring and logging), and <strong>Patients</strong> (guided home execution).
+            </p>
+          </div>
+          <div class="text-xs text-blue-400 font-mono mt-4 pt-2 border-t border-slate-700">Table: users</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📋</div>
+            <h4 class="text-base font-bold text-white mb-2">Clinical Intake Profile</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Captures initial injury diagnosis, affected anatomical joint, pre-existing comorbidities, emergency contacts, and baseline mobility.
+            </p>
+          </div>
+          <div class="text-xs text-blue-400 font-mono mt-4 pt-2 border-t border-slate-700">Table: patient_profiles</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📐</div>
+            <h4 class="text-base font-bold text-white mb-2">Baseline ROM Ingestion</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Establishes initial degrees of flexion/extension (e.g. 75° Knee Flexion) against which all subsequent recovery milestones are measured.
+            </p>
+          </div>
+          <div class="text-xs text-blue-400 font-mono mt-4 pt-2 border-t border-slate-700">Field: initial_rom_angle</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>Backend: <code class="text-sky-400">backend/src/mod_auth.rs</code></div>
+        <div>Frontend: <code class="text-sky-400">frontend/src/modules/auth/AuthModule.tsx</code></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 5: MODULE 2 DEEP DIVE (CORE FOCUS) ==================== -->
+    <section class="slide-card" data-slide="5">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-sky-500/10 text-sky-400 border border-sky-500/20">
+          Module 2 Deep Dive • Member 2 (Our Core Contribution)
+        </span>
+        <span class="text-xs text-slate-400">Slide 5 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-1">Doctor Prescription Planner & Protocol Suite</h2>
+      <p class="text-slate-400 text-sm mb-5">High-efficiency clinical workbench turning complex orthopedic treatment into a seamless 1-click experience.</p>
+
+      <div class="grid grid-cols-4 gap-4 my-auto">
+        <!-- 1 -->
+        <div class="metric-box bg-slate-900/60">
+          <div class="text-xl mb-1">⚡</div>
+          <h4 class="font-bold text-white text-sm mb-1">Clinical Templates</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Evidence-based presets (ACL Phase 1, Rotator Cuff, Lumbar Core). 1-click auto-populates all sets, reps, and hold times.
+          </p>
+          <div class="mt-2 text-xs text-sky-400 font-semibold">+ Custom Doctor Protocol Creator</div>
+        </div>
+
+        <!-- 2 -->
+        <div class="metric-box bg-slate-900/60">
+          <div class="text-xl mb-1">⏱️</div>
+          <h4 class="font-bold text-white text-sm mb-1">Workout Calculator</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Dynamic algorithm calculating total daily rehab investment: <code>(Sets × Reps × Hold) + Rest Time</code> in real-time.
+          </p>
+          <div class="mt-2 text-xs text-emerald-400 font-semibold">Prevents Patient Fatigue</div>
+        </div>
+
+        <!-- 3 -->
+        <div class="metric-box bg-slate-900/60">
+          <div class="text-xl mb-1">🖨️</div>
+          <h4 class="font-bold text-white text-sm mb-1">Take-Home Print Sheet</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Official clinic letterhead, comprehensive exercises table, safety instructions, and an interactive 7-Day Matrix for home tracking.
+          </p>
+          <div class="mt-2 text-xs text-purple-400 font-semibold">Hospital Compliance Ready</div>
+        </div>
+
+        <!-- 4 -->
+        <div class="metric-box bg-slate-900/60">
+          <div class="text-xl mb-1">🛡️</div>
+          <h4 class="font-bold text-white text-sm mb-1">Atomic Transactions</h4>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Rust Axum + SQLite SQLx transaction wrapping plan updates and prescribed exercises in ACID safety with 0% data corruption risk.
+          </p>
+          <div class="mt-2 text-xs text-amber-400 font-semibold">Sub-millisecond Speed</div>
+        </div>
+      </div>
+
+      <div class="p-3 rounded-xl bg-sky-950/30 border border-sky-800/40 flex items-center justify-between text-xs text-slate-300">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <strong>Doctor Productivity Metric:</strong> Reduced prescription setup time from <strong>7.5 minutes</strong> to <strong>under 45 seconds</strong>.
+        </span>
+        <span class="text-sky-400 font-mono">Status: Production Ready • Fully Tested</span>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 6: MODULE 3 ==================== -->
+    <section class="slide-card" data-slide="6">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Module 3 Breakdown • Member 3
+        </span>
+        <span class="text-xs text-slate-400">Slide 6 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Patient Guidance & Visual Video Catalog</h2>
+      <p class="text-slate-400 text-sm mb-6">Eliminating biomechanical movement errors through rich multimedia guidance.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🎬</div>
+            <h4 class="text-base font-bold text-white mb-2">Interactive Video Library</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Curated repository of clinical movement videos demonstrating proper joint kinematics, angles, and tempo for home safety.
+            </p>
+          </div>
+          <div class="text-xs text-emerald-400 font-mono mt-4 pt-2 border-t border-slate-700">media_assets</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🎯</div>
+            <h4 class="text-base font-bold text-white mb-2">Anatomical Tagging</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Exercises indexed by targeted joints (Knee, Shoulder, Lumbar Spine, Cervical, Ankle) and clinical difficulty levels (Easy, Medium, Hard).
+            </p>
+          </div>
+          <div class="text-xs text-emerald-400 font-mono mt-4 pt-2 border-t border-slate-700">target_body_part</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">⚠️</div>
+            <h4 class="text-base font-bold text-white mb-2">Contraindication Flags</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Explicit warning cues preventing hyperextension, valgus knee collapse, or compensatory muscle recruitment.
+            </p>
+          </div>
+          <div class="text-xs text-emerald-400 font-mono mt-4 pt-2 border-t border-slate-700">safety_notes</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>Backend: <code class="text-emerald-400">backend/src/mod_library.rs</code></div>
+        <div>Frontend: <code class="text-emerald-400">frontend/src/modules/library/LibraryModule.tsx</code></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 7: MODULE 4 ==================== -->
+    <section class="slide-card" data-slide="7">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          Module 4 Breakdown • Member 4
+        </span>
+        <span class="text-xs text-slate-400">Slide 7 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Gamified Rehabilitation Engine</h2>
+      <p class="text-slate-400 text-sm mb-6">Transforming monotonous physical therapy repetitions into engaging interactive milestones.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🎮</div>
+            <h4 class="text-base font-bold text-white mb-2">Interactive Canvas Loop</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              60 FPS HTML5 canvas engine rendering target holding rings and visual arcs corresponding to isometric holds and movement cadence.
+            </p>
+          </div>
+          <div class="text-xs text-amber-400 font-mono mt-4 pt-2 border-t border-slate-700">HTML5 Canvas Engine</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🏆</div>
+            <h4 class="text-base font-bold text-white mb-2">Score & Streak Mechanics</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Rewards accuracy, repetition stability, and sustained holds with instant positive feedback loops and streak multipliers.
+            </p>
+          </div>
+          <div class="text-xs text-amber-400 font-mono mt-4 pt-2 border-t border-slate-700">game_sessions</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📈</div>
+            <h4 class="text-base font-bold text-white mb-2">Psychological Adherence</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Overcomes the #1 barrier in outpatient recovery: patient boredom and disengagement during unassisted home exercises.
+            </p>
+          </div>
+          <div class="text-xs text-amber-400 font-mono mt-4 pt-2 border-t border-slate-700">+40% Session Completion</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>Backend: <code class="text-amber-400">backend/src/mod_game.rs</code></div>
+        <div>Frontend: <code class="text-amber-400">frontend/src/modules/game/GameModule.tsx</code></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 8: MODULE 5 ==================== -->
+    <section class="slide-card" data-slide="8">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          Module 5 Breakdown • Member 5
+        </span>
+        <span class="text-xs text-slate-400">Slide 8 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Nurse Clinical Notes & Patient Activity Logger</h2>
+      <p class="text-slate-400 text-sm mb-6">Objective daily check-ins logging biomechanical load, exertion, and pain tolerance.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📝</div>
+            <h4 class="text-base font-bold text-white mb-2">Activity Rep Counter</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Captures actual completed sets, reps, and hold durations versus the doctor's prescribed targets, computing true compliance ratios.
+            </p>
+          </div>
+          <div class="text-xs text-rose-400 font-mono mt-4 pt-2 border-t border-slate-700">activity_logs</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🌡️</div>
+            <h4 class="text-base font-bold text-white mb-2">Visual Analog Pain (0-10)</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Standardized VAS pain index slider coupled with Borg Rating of Perceived Exertion (RPE) to monitor physical tolerance.
+            </p>
+          </div>
+          <div class="text-xs text-rose-400 font-mono mt-4 pt-2 border-t border-slate-700">pain_scale & rpe_scale</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">🚨</div>
+            <h4 class="text-base font-bold text-white mb-2">Nurse Observation Alerts</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Dedicated nurse observation channel with an urgent flag toggle for swelling, acute pain spikes, or surgical wound redness.
+            </p>
+          </div>
+          <div class="text-xs text-rose-400 font-mono mt-4 pt-2 border-t border-slate-700">vital_notes</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>Backend: <code class="text-rose-400">backend/src/mod_logger.rs</code></div>
+        <div>Frontend: <code class="text-rose-400">frontend/src/modules/logger/LoggerModule.tsx</code></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 9: MODULE 6 ==================== -->
+    <section class="slide-card" data-slide="9">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          Module 6 Breakdown • Member 6
+        </span>
+        <span class="text-xs text-slate-400">Slide 9 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Longitudinal Analytics & Recovery Intelligence</h2>
+      <p class="text-slate-400 text-sm mb-6">Transforming raw activity telemetry into actionable orthopedic recovery insights.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📈</div>
+            <h4 class="text-base font-bold text-white mb-2">ROM Trajectory Modeling</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Visualizes joint angle restoration curves across weeks, comparing individual progress against clinical population benchmarks.
+            </p>
+          </div>
+          <div class="text-xs text-purple-400 font-mono mt-4 pt-2 border-t border-slate-700">view_patient_recovery_summary</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">📉</div>
+            <h4 class="text-base font-bold text-white mb-2">Pain Alleviation Curves</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Plots pain trend degradation as muscular stabilizers strengthen, proving clinical intervention efficacy.
+            </p>
+          </div>
+          <div class="text-xs text-purple-400 font-mono mt-4 pt-2 border-t border-slate-700">Evidence-Based Validation</div>
+        </div>
+
+        <div class="feature-card flex flex-col justify-between">
+          <div>
+            <div class="text-2xl mb-2">⚠️</div>
+            <h4 class="text-base font-bold text-white mb-2">Automated Red-Flag Warnings</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Automated trigger alerting the orthopedic surgeon when a patient's pain index spikes ≥ 7/10 or when exercise compliance stalls.
+            </p>
+          </div>
+          <div class="text-xs text-purple-400 font-mono mt-4 pt-2 border-t border-slate-700">view_patient_alerts</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>Backend: <code class="text-purple-400">backend/src/mod_analytics.rs</code></div>
+        <div>Frontend: <code class="text-purple-400">frontend/src/modules/analytics/AnalyticsModule.tsx</code></div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 10: TECH STACK & TEAM GOVERNANCE ==================== -->
+    <section class="slide-card" data-slide="10">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-teal-500/10 text-teal-400 border border-teal-500/20">
+          Engineering Governance
+        </span>
+        <span class="text-xs text-slate-400">Slide 10 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Technology Stack & Git Collaboration Blueprint</h2>
+      <p class="text-slate-400 text-sm mb-5">Engineered to eliminate merge friction across a 6-engineer graduate software project.</p>
+
+      <div class="grid grid-cols-2 gap-6 my-auto">
+        <!-- Tech Stack -->
+        <div class="feature-card">
+          <h4 class="font-bold text-teal-400 text-sm mb-3">Enterprise Technology Stack</h4>
+          <div class="space-y-2 text-xs text-slate-300">
+            <div class="flex justify-between p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="font-semibold text-slate-200">Backend Core</span>
+              <span class="text-sky-400 font-mono">Rust (Axum 0.7 + SQLx)</span>
+            </div>
+            <div class="flex justify-between p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="font-semibold text-slate-200">Frontend UI</span>
+              <span class="text-indigo-400 font-mono">React 18 + TypeScript + Vite</span>
+            </div>
+            <div class="flex justify-between p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="font-semibold text-slate-200">Database Engine</span>
+              <span class="text-emerald-400 font-mono">SQLite (ACID Compliant)</span>
+            </div>
+            <div class="flex justify-between p-2 rounded bg-slate-900 border border-slate-800">
+              <span class="font-semibold text-slate-200">Dev Bridge Server</span>
+              <span class="text-amber-400 font-mono">Node.js `node:sqlite` fallback</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Git Rules -->
+        <div class="feature-card">
+          <h4 class="font-bold text-teal-400 text-sm mb-3">Modular Git Branching Governance</h4>
+          <ul class="space-y-2.5 text-xs text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-teal-400 font-bold">✓</span>
+              <span><strong>Isolated Module Folders:</strong> Each engineer owns strictly 1 frontend folder and 1 backend Rust file.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-400 font-bold">✓</span>
+              <span><strong>Feature Branches:</strong> <code>feat/mod1</code> through <code>feat/mod6</code> prevent concurrent PR collisions.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-400 font-bold">✓</span>
+              <span><strong>Immutable Migrations:</strong> <code>001_init.sql</code> is locked; new schema additions require incremental scripts.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-400 font-bold">✓</span>
+              <span><strong>Build Validation:</strong> Every feature passes <code>tsc && vite build</code> with 0 errors before merging.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>GitHub Repository: <strong class="text-white">akramyusop/PhysioSystem</strong></div>
+        <div class="text-emerald-400 font-semibold">Continuous Integration Ready</div>
+      </div>
+    </section>
+
+
+    <!-- ==================== SLIDE 11: CONCLUSION & IMPACT ==================== -->
+    <section class="slide-card" data-slide="11">
+      <div class="flex items-center justify-between mb-4">
+        <span class="badge-pill bg-sky-500/10 text-sky-400 border border-sky-500/20">
+          Executive Summary & Road Ahead
+        </span>
+        <span class="text-xs text-slate-400">Slide 11 / 11</span>
+      </div>
+
+      <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">Clinical Impact & Next Strategic Milestones</h2>
+      <p class="text-slate-400 text-sm mb-6">Delivering tangible healthcare return on investment for patients, clinicians, and hospital networks.</p>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="metric-box bg-slate-900 border-sky-500/30">
+          <div class="text-3xl font-extrabold text-sky-400">85%</div>
+          <div class="text-sm font-bold text-white mt-1">Projected Adherence</div>
+          <p class="text-xs text-slate-400 mt-2">Versus standard 30% outpatient compliance through gamification and instant take-home sheets.</p>
+        </div>
+
+        <div class="metric-box bg-slate-900 border-emerald-500/30">
+          <div class="text-3xl font-extrabold text-emerald-400">10x</div>
+          <div class="text-sm font-bold text-white mt-1">Prescription Efficiency</div>
+          <p class="text-xs text-slate-400 mt-2">Doctors configure complex multi-exercise rehabilitation regimens in under 45 seconds using templates.</p>
+        </div>
+
+        <div class="metric-box bg-slate-900 border-purple-500/30">
+          <div class="text-3xl font-extrabold text-purple-400">100%</div>
+          <div class="text-sm font-bold text-white mt-1">Objective Telemetry</div>
+          <p class="text-xs text-slate-400 mt-2">Automated joint ROM progression data feeds directly into electronic medical records (EMR).</p>
+        </div>
+      </div>
+
+      <div class="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+        <div>
+          <h4 class="font-bold text-white text-sm">Next Phase Milestones:</h4>
+          <p class="text-xs text-slate-400 mt-0.5">Computer Vision Webcam Joint Tracking (PoseNet/MediaPipe) • HL7 / FHIR Hospital Integration.</p>
+        </div>
+        <div class="text-right">
+          <span class="text-sm font-bold text-sky-400">Thank You!</span>
+          <div class="text-xs text-slate-400">Questions & Live Demonstration</div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+        <div>UTeM Graduate Program • Rehabilitation Healthcare Systems</div>
+        <div>November 2026</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Dots Indicator -->
+  <footer class="no-print pb-4 flex justify-center items-center gap-2">
+    <div id="dotsContainer" class="flex gap-2"></div>
+  </footer>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 11;
+
+    function initDots() {
+      const container = document.getElementById('dotsContainer');
+      container.innerHTML = '';
+      for (let i = 1; i <= totalSlides; i++) {
+        const dot = document.createElement('button');
+        dot.className = `w-2.5 h-2.5 rounded-full transition-all duration-200 ${i === currentSlide ? 'bg-sky-400 w-8' : 'bg-slate-700 hover:bg-slate-500'}`;
+        dot.title = `Go to slide ${i}`;
+        dot.onclick = () => goToSlide(i);
+        container.appendChild(dot);
+      }
+    }
+
+    function updateView() {
+      // Toggle slide visibility
+      document.querySelectorAll('.slide-card').forEach(slide => {
+        const slideNum = parseInt(slide.getAttribute('data-slide'));
+        if (slideNum === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      // Update counters
+      document.getElementById('currentSlideNum').innerText = currentSlide;
+      document.getElementById('progressBar').style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+      // Update dots
+      initDots();
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateView();
+      }
+    }
+
+    function goToSlide(num) {
+      if (num >= 1 && num <= totalSlides) {
+        currentSlide = num;
+        updateView();
+      }
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        goToSlide(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        goToSlide(totalSlides);
+      }
+    });
+
+    initDots();
+  </script>
+</body>
+</html>

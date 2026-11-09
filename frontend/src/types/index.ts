@@ -63,6 +63,7 @@ export interface TreatmentPlan {
   start_date: string;
   end_date?: string | null;
   exercise_count?: number;
+  exercises?: PrescribedExercise[];
 }
 
 export interface PrescribedExercise {
