@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Node dependencies
 node_modules/
 dist/
@@ -18,3 +19,31 @@ Thumbs.db
 .vscode/
 .idea/
 
+=======
+# Node dependencies & build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+
+# Rust build artifacts
+target/
+**/target/
+**/*.rs.bk
+Cargo.lock
+
+# SQLite database temp journals (keep physio.db)
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs and environment
+*.log
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+>>>>>>> main
